@@ -50,6 +50,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenSchemaModal }) =
       'history-movement',
       'personality-development',
       'dressing-sense',
+      'case-studies',
+      'time-management',
     ]
   );
 
@@ -149,6 +151,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenSchemaModal }) =
       label_hi: '👔 ड्रेसिंग सेंस एवं सलीका',
       desc_en: 'Proportions, color harmony, capsule wardrobe, fabric care & smart dressing',
       desc_hi: 'शारीरिक अनुपात, रंगों का सामंजस्य, कैप्सूल वॉर्डरोब, कपड़ों की देखभाल व सलीका',
+    },
+    {
+      id: 'case-studies' as SubjectId,
+      label_en: '💡 Case Studies: World-Changing Ideas',
+      label_hi: '💡 केस स्टडीज़: दुनिया बदलने वाले विचार',
+      desc_en: 'Gutenberg, Penicillin, Transistors, Green Revolution, GPS & World Wide Web',
+      desc_hi: 'प्रिंटिंग प्रेस, पेनिसिलिन, ट्रांजिस्टर, हरित क्रांति, जीपीएस व वर्ल्ड वाइड वेब',
+    },
+    {
+      id: 'time-management' as SubjectId,
+      label_en: '⏱️ Time Management',
+      label_hi: '⏱️ समय प्रबंधन एवं कार्यकुशलता',
+      desc_en: 'Eisenhower matrix, Pomodoro, calendar blocking, saying no & GTD weekly review',
+      desc_hi: 'आइजनहावर मैट्रिक्स, पोमोडोरो, टाइम-ब्लॉकिंग, ना कहने की कला व GTD वीकली रिव्यू',
     },
   ];
 

@@ -73,6 +73,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         return '✨';
       case 'dressing-sense':
         return '👔';
+      case 'case-studies':
+        return '💡';
+      case 'time-management':
+        return '⏱️';
       default:
         return '📚';
     }

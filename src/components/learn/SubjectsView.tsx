@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Compass,
   Shirt,
+  Lightbulb,
+  Clock,
 } from 'lucide-react';
 import { useLearning } from '../../context/LearningContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -41,6 +43,10 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onSelectSubject }) =
         return Sparkles;
       case 'dressing-sense':
         return Shirt;
+      case 'case-studies':
+        return Lightbulb;
+      case 'time-management':
+        return Clock;
       default:
         return BookOpen;
     }
@@ -83,6 +89,10 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onSelectSubject }) =
               ? 'bg-[#E6FFFA] text-teal-800'
               : sub.id === 'dressing-sense'
               ? 'bg-[#EDE9FE] text-violet-800'
+              : sub.id === 'case-studies'
+              ? 'bg-[#FEF3C7] text-amber-900'
+              : sub.id === 'time-management'
+              ? 'bg-[#CCFBF1] text-teal-900'
               : 'bg-[#FFFBEB] text-amber-900';
 
           const subName = language === 'hi' && sub.name_hi ? sub.name_hi : sub.name;

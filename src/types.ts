@@ -6,7 +6,9 @@ export type SubjectId =
   | 'polity-constitution'
   | 'history-movement'
   | 'personality-development'
-  | 'dressing-sense';
+  | 'dressing-sense'
+  | 'case-studies'
+  | 'time-management';
 
 export type AppLanguage = 'en' | 'hi';
 

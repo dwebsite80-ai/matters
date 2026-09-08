@@ -17,6 +17,7 @@ import {
   Landmark,
   ScrollText,
   Shirt,
+  Lightbulb,
 } from 'lucide-react';
 import { SubjectId, LearningLevel, DailyMinutes, PreferredTime, LearningGoal } from '../../types';
 import { useLearning } from '../../context/LearningContext';
@@ -41,6 +42,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     'history-movement',
     'personality-development',
     'dressing-sense',
+    'case-studies',
+    'time-management',
   ]);
   const [level, setLevel] = useState<LearningLevel>('Beginner');
   const [dailyMinutes, setDailyMinutes] = useState<DailyMinutes>(10);
@@ -161,6 +164,26 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
       title_hi: '👔 ड्रेसिंग सेंस एवं सलीका',
       desc_en: 'Body proportions, color coordination, 12-piece capsule wardrobe & formal elegance.',
       desc_hi: 'शारीरिक अनुपात, सही नाप, रंगों का मेल, 12-वस्त्र कैप्सूल वॉर्डरोब और फॉर्मल गरिमा।',
+    },
+    {
+      id: 'case-studies' as SubjectId,
+      icon: Lightbulb,
+      iconBg: 'bg-[#FEF3C7]',
+      iconColor: 'text-amber-800',
+      title_en: '💡 Case Studies: World-Changing Ideas',
+      title_hi: '💡 केस स्टडीज़: दुनिया बदलने वाले विचार',
+      desc_en: 'Gutenberg, Penicillin, Transistors, Green Revolution, GPS & World Wide Web.',
+      desc_hi: 'प्रिंटिंग प्रेस, पेनिसिलिन, ट्रांजिस्टर, हरित क्रांति, जीपीएस व वर्ल्ड वाइड वेब।',
+    },
+    {
+      id: 'time-management' as SubjectId,
+      icon: Clock,
+      iconBg: 'bg-[#CCFBF1]',
+      iconColor: 'text-teal-800',
+      title_en: '⏱️ Time Management',
+      title_hi: '⏱️ समय प्रबंधन एवं कार्यकुशलता',
+      desc_en: 'Eisenhower matrix, Pomodoro, calendar blocking, saying no & GTD weekly review.',
+      desc_hi: 'आइजनहावर मैट्रिक्स, पोमोडोरो, टाइम-ब्लॉकिंग, ना कहने की कला व GTD वीकली रिव्यू।',
     },
   ];
 

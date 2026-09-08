@@ -8,6 +8,10 @@ import { POLITY_LESSONS, POLITY_QUESTIONS } from './polityLessons';
 import { HISTORY_LESSONS, HISTORY_QUESTIONS } from './historyLessons';
 import { PERSONALITY_LESSONS, PERSONALITY_QUESTIONS } from './personalityLessons';
 import { DRESSING_LESSONS, DRESSING_QUESTIONS } from './dressingLessons';
+import { CASE_STUDIES_LESSONS_PART1, CASE_STUDIES_QUESTIONS_PART1 } from './caseStudiesLessonsPart1';
+import { CASE_STUDIES_LESSONS_PART2, CASE_STUDIES_QUESTIONS_PART2 } from './caseStudiesLessonsPart2';
+import { TIME_MANAGEMENT_LESSONS_PART1, TIME_MANAGEMENT_QUESTIONS_PART1 } from './timeManagementLessonsPart1';
+import { TIME_MANAGEMENT_LESSONS_PART2, TIME_MANAGEMENT_QUESTIONS_PART2 } from './timeManagementLessonsPart2';
 
 export const ALL_SUBJECTS: Subject[] = SUBJECTS;
 export const ALL_TOPICS: Topic[] = TOPICS;
@@ -20,6 +24,10 @@ export const ALL_LESSONS: Lesson[] = [
   ...HISTORY_LESSONS,
   ...PERSONALITY_LESSONS,
   ...DRESSING_LESSONS,
+  ...CASE_STUDIES_LESSONS_PART1,
+  ...CASE_STUDIES_LESSONS_PART2,
+  ...TIME_MANAGEMENT_LESSONS_PART1,
+  ...TIME_MANAGEMENT_LESSONS_PART2,
 ];
 export const ALL_QUESTIONS: Question[] = [
   ...LAW_QUESTIONS,
@@ -30,6 +38,10 @@ export const ALL_QUESTIONS: Question[] = [
   ...HISTORY_QUESTIONS,
   ...PERSONALITY_QUESTIONS,
   ...DRESSING_QUESTIONS,
+  ...CASE_STUDIES_QUESTIONS_PART1,
+  ...CASE_STUDIES_QUESTIONS_PART2,
+  ...TIME_MANAGEMENT_QUESTIONS_PART1,
+  ...TIME_MANAGEMENT_QUESTIONS_PART2,
 ];
 
 // Helper functions for easy data access
