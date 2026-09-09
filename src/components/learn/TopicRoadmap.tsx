@@ -94,8 +94,16 @@ export const TopicRoadmap: React.FC<TopicRoadmapProps> = ({
           const isCompleted = status === 'completed';
           const isCurrent = status === 'current';
 
-          const topicTitle = language === 'hi' && topic.title_hi ? topic.title_hi : topic.title;
-          const topicDesc = language === 'hi' && topic.description_hi ? topic.description_hi : topic.description;
+          // Ensure card and detail page read from the SAME lesson object with resilient language resolution
+          const cardTitle = language === 'hi'
+            ? (lesson?.title_hi || lesson?.title || topic.title_hi || topic.title)
+            : (lesson?.title_en || lesson?.title || topic.title);
+          const cardSubtitle = language === 'hi'
+            ? (lesson?.subtitle_hi || lesson?.subtitle || topic.description_hi || topic.description)
+            : (lesson?.subtitle_en || lesson?.subtitle || topic.description);
+          const cardMinutes = lesson?.estimatedMinutes ?? lesson?.estimated_minutes ?? topic.estimated_minutes;
+          const cardDifficulty = lesson?.difficulty ?? topic.difficulty;
+          const lessonNumber = lesson?.lessonNumber ?? lesson?.lesson_number ?? (index + 1);
 
           return (
             <div
@@ -135,7 +143,7 @@ export const TopicRoadmap: React.FC<TopicRoadmapProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-mono uppercase font-bold text-gray-500">
-                        {language === 'hi' ? `पाठ ${index + 1}` : `Lesson ${index + 1}`}
+                        {language === 'hi' ? `पाठ ${lessonNumber}` : `Lesson ${lessonNumber}`}
                       </span>
                       {isCurrent && (
                         <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-[#1A1A1A] text-white">
@@ -151,23 +159,23 @@ export const TopicRoadmap: React.FC<TopicRoadmapProps> = ({
                   </div>
 
                   <h3 className="font-serif italic font-bold text-base text-[#1A1A1A] mt-1">
-                    {topicTitle}
+                    {cardTitle}
                   </h3>
                   <p className="text-xs text-gray-500 mt-1 line-clamp-2 font-light leading-relaxed">
-                    {topicDesc}
+                    {cardSubtitle}
                   </p>
 
                   <div className="mt-3.5 flex items-center justify-between text-xs text-gray-500">
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
-                        {topic.estimated_minutes} {language === 'hi' ? 'मिनट' : 'min'}
+                        {cardMinutes} {language === 'hi' ? 'मिनट' : 'min'}
                       </span>
                       <span className="flex items-center gap-1">
                         <Award className="w-3.5 h-3.5 text-amber-500" />
                         {language === 'hi'
-                          ? (topic.difficulty === 'Beginner' ? 'सरल' : topic.difficulty === 'Intermediate' ? 'मध्यम' : 'उन्नत')
-                          : topic.difficulty}
+                          ? (cardDifficulty === 'Beginner' ? 'सरल' : cardDifficulty === 'Intermediate' ? 'मध्यम' : 'उन्नत')
+                          : cardDifficulty}
                       </span>
                     </div>
 

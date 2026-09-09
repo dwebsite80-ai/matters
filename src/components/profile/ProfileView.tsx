@@ -154,10 +154,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenSchemaModal }) =
     },
     {
       id: 'case-studies' as SubjectId,
-      label_en: '💡 Case Studies: World-Changing Ideas',
-      label_hi: '💡 केस स्टडीज़: दुनिया बदलने वाले विचार',
-      desc_en: 'Gutenberg, Penicillin, Transistors, Green Revolution, GPS & World Wide Web',
-      desc_hi: 'प्रिंटिंग प्रेस, पेनिसिलिन, ट्रांजिस्टर, हरित क्रांति, जीपीएस व वर्ल्ड वाइड वेब',
+      label_en: '💡 Case Studies: Real-World Business Stories',
+      label_hi: '💡 केस स्टडीज़: बिज़नेस और सफलता की कहानियां',
+      desc_en: 'Airbnb, Zerodha, Amul, Canva, OYO, Dhirubhai Ambani, Spanx & Patagonia',
+      desc_hi: 'Airbnb, Zerodha, Amul, Canva, OYO, धीरूभाई अंबानी, Spanx व Patagonia',
     },
     {
       id: 'time-management' as SubjectId,

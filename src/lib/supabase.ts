@@ -100,6 +100,12 @@ export async function dbGetUserProfile(userId: string): Promise<UserProfile | nu
   const users = getStoredUsers();
   const found = users[userId];
   if (found) {
+    if (found.id === 'demo-user-101' && found.name !== 'Anurag') {
+      found.name = 'Anurag';
+      found.email = 'anurag.learner@example.com';
+      users[userId] = found;
+      saveStoredUsers(users);
+    }
     return {
       id: found.id,
       name: found.name,
@@ -394,10 +400,18 @@ export async function localLogIn(email: string, password: string): Promise<UserP
 // Seed Demo User if needed for immediate instant evaluation
 export function seedDefaultDemoUser(): UserProfile {
   const users = getStoredUsers();
-  const demoEmail = 'alex.learner@example.com';
-  const existing = Object.values(users).find((u) => u.email === demoEmail);
+  const demoEmail = 'anurag.learner@example.com';
+  const existing = Object.values(users).find(
+    (u) => u.email === demoEmail || u.id === 'demo-user-101'
+  );
 
   if (existing) {
+    if (existing.name !== 'Anurag' || existing.email !== demoEmail) {
+      existing.name = 'Anurag';
+      existing.email = demoEmail;
+      users[existing.id] = existing;
+      saveStoredUsers(users);
+    }
     return {
       id: existing.id,
       name: existing.name,
@@ -410,7 +424,7 @@ export function seedDefaultDemoUser(): UserProfile {
   const now = new Date().toISOString();
   const demoAccount: StoredUserAccount = {
     id: demoId,
-    name: 'Alex Kumar',
+    name: 'Anurag',
     email: demoEmail,
     passwordHash: btoa('password123'),
     created_at: now,

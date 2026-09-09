@@ -293,7 +293,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccessSignup }) => {
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-full border border-black/10 bg-[#F5F5F0] hover:bg-[#EBEBE5] text-xs font-medium text-[#1A1A1A] transition-all cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>Explore with Demo Account (Alex Kumar)</span>
+                <span>Explore with Demo Account (Anurag)</span>
               </button>
             </div>
           </div>

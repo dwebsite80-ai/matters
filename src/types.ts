@@ -80,14 +80,22 @@ export interface Lesson {
   id: string;
   topic_id: string;
   subject_id: SubjectId;
+  lessonNumber?: number;
+  lesson_number?: number;
   title: string;
+  title_en?: string;
   title_hi?: string;
   subtitle?: string;
+  subtitle_en?: string;
   subtitle_hi?: string;
   estimated_minutes: number;
+  estimatedMinutes?: number;
   difficulty: LearningLevel;
   hook: string;
+  hook_en?: string;
   hook_hi?: string;
+  content_en?: string;
+  content_hi?: string;
   sections: LessonContentSection[];
   practical_example: {
     scenario: string;
@@ -108,6 +116,19 @@ export interface Lesson {
     steps: string[];
     steps_hi?: string[];
   };
+  practicalActivity_en?: {
+    title: string;
+    description: string;
+    steps?: string[];
+    time_minutes?: number;
+  };
+  practicalActivity_hi?: {
+    title: string;
+    description: string;
+    steps?: string[];
+    time_minutes?: number;
+  };
+  quizQuestions?: Question[];
 }
 
 export interface Question {

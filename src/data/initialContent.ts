@@ -56,15 +56,44 @@ export function getTopicsBySubject(subjectId: SubjectId): Topic[] {
 }
 
 export function getLessonById(lessonId: string): Lesson | undefined {
-  return ALL_LESSONS.find((l) => l.id === lessonId);
+  // 1. Direct match by lesson id
+  const byId = ALL_LESSONS.find((l) => l.id === lessonId);
+  if (byId) return byId;
+
+  // 2. If topicId was passed as lessonId, check topic mapping
+  const topic = ALL_TOPICS.find((t) => t.id === lessonId);
+  if (topic?.lesson_id) {
+    const byTopicLessonId = ALL_LESSONS.find((l) => l.id === topic.lesson_id);
+    if (byTopicLessonId) return byTopicLessonId;
+  }
+
+  // 3. Fallback: match by topic_id
+  return ALL_LESSONS.find((l) => l.topic_id === lessonId);
 }
 
 export function getLessonByTopicId(topicId: string): Lesson | undefined {
-  return ALL_LESSONS.find((l) => l.topic_id === topicId);
+  // 1. First find the topic in ALL_TOPICS to check its explicit lesson_id
+  const topic = ALL_TOPICS.find((t) => t.id === topicId);
+  if (topic?.lesson_id) {
+    const lesson = ALL_LESSONS.find((l) => l.id === topic.lesson_id);
+    if (lesson) return lesson;
+  }
+
+  // 2. Match directly by lesson.topic_id
+  const byTopicId = ALL_LESSONS.find((l) => l.topic_id === topicId);
+  if (byTopicId) return byTopicId;
+
+  // 3. Match directly by lesson.id (in case lesson id was passed)
+  return ALL_LESSONS.find((l) => l.id === topicId);
 }
 
 export function getQuestionsByLessonId(lessonId: string): Question[] {
-  return ALL_QUESTIONS.filter((q) => q.lesson_id === lessonId);
+  const lesson = getLessonById(lessonId);
+  if (lesson?.quizQuestions && lesson.quizQuestions.length > 0) {
+    return lesson.quizQuestions;
+  }
+  const targetId = lesson?.id || lessonId;
+  return ALL_QUESTIONS.filter((q) => q.lesson_id === targetId);
 }
 
 export function getQuestionsBySubjectId(subjectId: SubjectId): Question[] {

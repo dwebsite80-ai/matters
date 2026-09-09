@@ -75,6 +75,10 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
           return '🌟 व्यक्तित्व विकास';
         case 'dressing-sense':
           return '👔 ड्रेसिंग सेंस';
+        case 'case-studies':
+          return '💼 केस स्टडीज़';
+        case 'time-management':
+          return '⏰ समय प्रबंधन';
         default:
           return '📚 पाठ्यक्रम';
       }
@@ -96,14 +100,18 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
         return '🌟 Personality Development';
       case 'dressing-sense':
         return '👔 Dressing Sense';
+      case 'case-studies':
+        return '💼 Case Studies';
+      case 'time-management':
+        return '⏰ Time Management';
       default:
         return '📚 Course';
     }
   };
 
-  const lessonTitle = language === 'hi' && lesson.title_hi ? lesson.title_hi : lesson.title;
-  const lessonSubtitle = language === 'hi' && lesson.subtitle_hi ? lesson.subtitle_hi : lesson.subtitle;
-  const lessonHook = language === 'hi' && lesson.hook_hi ? lesson.hook_hi : lesson.hook;
+  const lessonTitle = language === 'hi' && lesson.title_hi ? lesson.title_hi : (lesson.title_en || lesson.title);
+  const lessonSubtitle = language === 'hi' && lesson.subtitle_hi ? lesson.subtitle_hi : (lesson.subtitle_en || lesson.subtitle);
+  const lessonHook = language === 'hi' && lesson.hook_hi ? lesson.hook_hi : (lesson.hook_en || lesson.hook);
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 animate-fadeIn">
