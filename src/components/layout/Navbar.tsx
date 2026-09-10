@@ -29,7 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenS
     : 'U';
 
   return (
-    <header className="sticky top-0 z-30 bg-[#FDFCFB]/90 backdrop-blur-md border-b border-black/5 w-full">
+    <header className="fixed top-0 left-0 right-0 z-40 bg-[#FDFCFB]/95 backdrop-blur-md border-b border-black/5 w-full shadow-xs">
       <div className="max-w-4xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2">
         {/* Brand Logo & Editorial Title */}
         <div 

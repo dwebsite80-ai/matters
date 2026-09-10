@@ -112,7 +112,7 @@ function MainAppContent() {
       />
 
       {/* Main View Area */}
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full pt-16 sm:pt-20">
         {/* Active Quiz Player */}
         {activeQuizLesson ? (
           <QuizPlayer
