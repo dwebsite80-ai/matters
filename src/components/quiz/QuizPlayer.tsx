@@ -9,21 +9,24 @@ import {
   Award,
   RotateCcw,
 } from 'lucide-react';
-import { Question, Lesson } from '../../types';
+import { Question, Lesson, TiaMode } from '../../types';
 import { useLearning } from '../../context/LearningContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerConfetti, triggerStreakCelebration } from '../../lib/confetti';
+import { scrollToTop, useScrollToTop } from '../../lib/scrollHelper';
 
 interface QuizPlayerProps {
   lesson: Lesson;
   questions: Question[];
   onFinish: () => void;
+  onOpenTia?: (mode?: TiaMode) => void;
 }
 
 export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   lesson,
   questions,
   onFinish,
+  onOpenTia,
 }) => {
   const { completeLesson } = useLearning();
   const { language } = useLanguage();
@@ -39,6 +42,9 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   const [xpResult, setXpResult] = useState<{ xpGained: number; streakIncreased: boolean } | null>(
     null
   );
+
+  // Automatically scroll to top on question transition, quiz open, or completion screen
+  useScrollToTop([currentIndex, isCompleted, lesson.id], { behavior: 'instant' });
 
   const safeQuestions = questions || [];
   const totalQuestions = safeQuestions.length;
@@ -91,7 +97,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       setCurrentIndex(currentIndex + 1);
       setSelectedOption(null);
       setIsSubmitted(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToTop({ behavior: 'instant' });
     } else {
       // Finish Quiz
       const finalAnswers = [
@@ -120,6 +126,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         );
         setXpResult(result);
         setIsCompleted(true);
+        scrollToTop({ behavior: 'instant' });
         triggerConfetti();
         if (result.streakIncreased) {
           setTimeout(() => triggerStreakCelebration(), 400);
@@ -127,6 +134,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       } catch (err) {
         console.error('Error saving quiz result', err);
         setIsCompleted(true);
+        scrollToTop({ behavior: 'instant' });
       } finally {
         setSavingProgress(false);
       }
@@ -341,9 +349,36 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             <p className="text-xs sm:text-sm leading-relaxed font-light">
               {explanationText}
             </p>
+            {onOpenTia && (
+              <div className="mt-3 pt-2.5 border-t border-black/5 flex items-center justify-between">
+                <span className="text-[11px] opacity-75">
+                  {language === 'hi' ? 'संदेह है या और विस्तार से समझना है?' : 'Confused why this is the answer?'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onOpenTia('chat')}
+                  className="text-xs font-bold underline hover:opacity-80 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>🎙️ {language === 'hi' ? 'टिया से पूछें' : 'Ask Tia'}</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Tia Hint Trigger if not submitted */}
+      {!isSubmitted && onOpenTia && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => onOpenTia('chat')}
+            className="text-xs text-gray-500 hover:text-black font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <span>💡 {language === 'hi' ? 'संकेत चाहिए? टिया से पूछें' : 'Need a hint? Ask Tia'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Action CTA Button */}
       <div>

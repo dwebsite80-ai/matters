@@ -186,3 +186,52 @@ export interface UserStats {
 }
 
 export type ActiveTab = 'home' | 'learn' | 'revision' | 'progress' | 'profile';
+
+export type TiaState = 'idle' | 'listening' | 'thinking' | 'speaking';
+
+export type TiaMode =
+  | 'chat'
+  | 'explain'
+  | 'funny'
+  | 'quiz'
+  | 'speaking_practice'
+  | 'revision';
+
+export interface TiaMessage {
+  id: string;
+  sender: 'user' | 'tia';
+  text: string;
+  mode?: TiaMode;
+  timestamp: number;
+  isVoice?: boolean;
+  quickActions?: string[];
+  quizData?: {
+    question: string;
+    options?: string[];
+    hint?: string;
+    correctAnswer?: string;
+  };
+}
+
+export interface TiaLessonContext {
+  subjectId: SubjectId;
+  subjectName: string;
+  lessonId: string;
+  lessonTitle: string;
+  lessonSubtitle?: string;
+  lessonHook?: string;
+  difficulty?: string;
+  sections?: { title: string; content: string; example?: string }[];
+  practicalExample?: { scenario: string; analysis: string; tip: string };
+  keyTakeaways?: string[];
+  currentQuizQuestion?: Question;
+  studentName?: string;
+}
+
+export interface TiaQuizEvaluation {
+  isCorrect: boolean;
+  feedback: string;
+  explanation: string;
+  funnyRemark?: string;
+  nextPrompt?: string;
+}

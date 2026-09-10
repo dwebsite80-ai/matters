@@ -11,19 +11,23 @@ import {
   HelpCircle,
   BookOpen,
 } from 'lucide-react';
-import { Lesson, SubjectId } from '../../types';
+import { Lesson, SubjectId, TiaMode } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { scrollToTop, useScrollToTop } from '../../lib/scrollHelper';
+import { TiaAvatar } from '../tia/TiaAvatar';
 
 interface LessonPlayerProps {
   lesson: Lesson;
   onBack: () => void;
   onStartQuiz: () => void;
+  onOpenTia?: (mode?: TiaMode) => void;
 }
 
 export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   lesson,
   onBack,
   onStartQuiz,
+  onOpenTia,
 }) => {
   const { language } = useLanguage();
 
@@ -36,12 +40,15 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   const takeawaysStepIndex = totalSteps - 1;
   const [currentStep, setCurrentStep] = useState<number>(0);
 
+  // Automatically scroll to top when lesson opens or currentStep changes
+  useScrollToTop([lesson.id, currentStep], { behavior: 'instant' });
+
   const progressPercent = Math.round(((currentStep + 1) / totalSteps) * 100);
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
       setCurrentStep(currentStep + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToTop({ behavior: 'instant' });
     } else {
       onStartQuiz();
     }
@@ -50,7 +57,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   const handlePrev = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToTop({ behavior: 'instant' });
     } else {
       onBack();
     }
@@ -160,6 +167,38 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
               ? (lesson.difficulty === 'Beginner' ? 'सरल' : lesson.difficulty === 'Intermediate' ? 'मध्यम' : 'उन्नत')
               : lesson.difficulty}
           </span>
+        </div>
+      </div>
+
+      {/* Tia AI Learning Companion Bar */}
+      <div className="flex items-center justify-between flex-wrap gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-[#FFFBEB] via-[#FFF5F5] to-[#F0FDF4] border border-black/5 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <TiaAvatar state="idle" size="sm" />
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-xs text-[#1A1A1A]">Tia Learning Companion</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-200/50 text-[#8C5E1A]">AI Voice</span>
+            </div>
+            <span className="text-[11px] text-gray-600 block">
+              {language === 'hi' ? 'कोई भी संदेह पूछें या मजेदार अंदाज में समझें' : 'Stuck or want a fun breakdown?'}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => onOpenTia?.('explain')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-black hover:text-white border border-black/10 text-xs font-bold text-[#1A1A1A] transition-all cursor-pointer shadow-2xs active:scale-95"
+          >
+            <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+            <span>{language === 'hi' ? 'टिया से समझें' : 'Explain with Tia'}</span>
+          </button>
+          <button
+            onClick={() => onOpenTia?.('funny')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-black hover:text-white border border-black/10 text-xs font-bold text-[#1A1A1A] transition-all cursor-pointer shadow-2xs active:scale-95"
+          >
+            <span>😂</span>
+            <span>{language === 'hi' ? 'मजेदार बनाएं' : 'Make It Funny'}</span>
+          </button>
         </div>
       </div>
 
@@ -383,6 +422,18 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Tia Helper Prompt */}
+      <div className="flex items-center justify-center gap-2 text-xs text-gray-500 py-1">
+        <span>{language === 'hi' ? 'कोई संदेह है?' : 'Confused about anything here?'}</span>
+        <button
+          onClick={() => onOpenTia?.('chat')}
+          className="font-bold text-[#1A1A1A] hover:underline flex items-center gap-1 cursor-pointer"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <span>{language === 'hi' ? 'टिया से पूछें 🎙️' : 'Ask Tia 🎙️'}</span>
+        </button>
+      </div>
 
       {/* Footer Navigation Buttons */}
       <div className="flex items-center gap-3 pt-2">

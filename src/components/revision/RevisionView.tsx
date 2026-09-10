@@ -14,6 +14,7 @@ import { useLearning } from '../../context/LearningContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Question, UserProgress } from '../../types';
 import { triggerConfetti } from '../../lib/confetti';
+import { scrollToTop, useScrollToTop } from '../../lib/scrollHelper';
 
 interface RevisionViewProps {
   onStartFirstLesson: () => void;
@@ -32,6 +33,9 @@ export const RevisionView: React.FC<RevisionViewProps> = ({ onStartFirstLesson }
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [gainedXp, setGainedXp] = useState<number>(0);
+
+  // Automatically scroll to top when starting session, advancing questions, or finishing
+  useScrollToTop([sessionActive, currentIndex, isCompleted], { behavior: 'instant' });
 
   const completedLessonCount = (Object.values(progressMap) as UserProgress[]).filter((p) => p.completed).length;
 
@@ -69,7 +73,7 @@ export const RevisionView: React.FC<RevisionViewProps> = ({ onStartFirstLesson }
       setCurrentIndex(currentIndex + 1);
       setSelectedOption(null);
       setIsSubmitted(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToTop({ behavior: 'instant' });
     } else {
       // Finish Revision
       const correctCount = userAnswers.filter((a) => a.isCorrect).length;
@@ -78,10 +82,12 @@ export const RevisionView: React.FC<RevisionViewProps> = ({ onStartFirstLesson }
         const res = await completeRevision(correctCount, questions.length);
         setGainedXp(res.xpGained);
         setIsCompleted(true);
+        scrollToTop({ behavior: 'instant' });
         triggerConfetti();
       } catch (e) {
         console.error('Error saving revision', e);
         setIsCompleted(true);
+        scrollToTop({ behavior: 'instant' });
       } finally {
         setSaving(false);
       }

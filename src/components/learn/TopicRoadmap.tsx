@@ -13,6 +13,7 @@ import { useLearning } from '../../context/LearningContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { SubjectId, Topic, Lesson } from '../../types';
 import { getTopicsBySubject, getLessonByTopicId, getSubjectById } from '../../data/initialContent';
+import { useScrollToTop } from '../../lib/scrollHelper';
 
 interface TopicRoadmapProps {
   subjectId: SubjectId;
@@ -27,6 +28,8 @@ export const TopicRoadmap: React.FC<TopicRoadmapProps> = ({
 }) => {
   const { getSubjectProgress, getTopicStatus, progressMap } = useLearning();
   const { language } = useLanguage();
+
+  useScrollToTop([subjectId], { behavior: 'instant' });
 
   const subject = getSubjectById(subjectId);
   const topics = getTopicsBySubject(subjectId);

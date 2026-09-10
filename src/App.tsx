@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LearningProvider } from './context/LearningContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -15,8 +15,11 @@ import { RevisionView } from './components/revision/RevisionView';
 import { ProgressView } from './components/progress/ProgressView';
 import { ProfileView } from './components/profile/ProfileView';
 import { SchemaModal } from './components/modals/SchemaModal';
-import { ActiveTab, Lesson, SubjectId } from './types';
-import { getQuestionsByLessonId, getLessonById } from './data/initialContent';
+import { ActiveTab, Lesson, SubjectId, TiaLessonContext, TiaMode } from './types';
+import { getQuestionsByLessonId, getLessonById, getSubjectById } from './data/initialContent';
+import { scrollToTop, useScrollToTop } from './lib/scrollHelper';
+import { TiaFloatingButton } from './components/tia/TiaFloatingButton';
+import { TiaAssistantModal } from './components/tia/TiaAssistantModal';
 
 function MainAppContent() {
   const { user, preferences, loading, refreshUserData } = useAuth();
@@ -26,6 +29,75 @@ function MainAppContent() {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [activeQuizLesson, setActiveQuizLesson] = useState<Lesson | null>(null);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState<boolean>(false);
+  const [isTiaOpen, setIsTiaOpen] = useState<boolean>(false);
+  const [tiaInitialMode, setTiaInitialMode] = useState<TiaMode>('chat');
+
+  const handleOpenTia = (mode: TiaMode = 'chat') => {
+    setTiaInitialMode(mode);
+    setIsTiaOpen(true);
+  };
+
+  // Build real-time lesson context for Tia
+  const currentSubjectId = activeLesson?.subject_id || activeQuizLesson?.subject_id || selectedSubjectId;
+  const currentSubject = currentSubjectId ? getSubjectById(currentSubjectId) : undefined;
+  const targetLesson = activeLesson || activeQuizLesson;
+
+  const tiaContext: TiaLessonContext | undefined = targetLesson
+    ? {
+        subjectId: targetLesson.subject_id,
+        subjectName: currentSubject?.name || targetLesson.subject_id,
+        lessonId: targetLesson.id,
+        lessonTitle: targetLesson.title_en || targetLesson.title,
+        lessonSubtitle: targetLesson.subtitle_en || targetLesson.subtitle,
+        lessonHook: targetLesson.hook_en || targetLesson.hook,
+        difficulty: targetLesson.difficulty,
+        sections: targetLesson.sections?.map((s) => ({
+          title: s.title,
+          content: s.content,
+          example: s.example,
+        })),
+        practicalExample: targetLesson.practical_example
+          ? {
+              scenario: targetLesson.practical_example.scenario,
+              analysis: targetLesson.practical_example.analysis,
+              tip: targetLesson.practical_example.actionable_tip,
+            }
+          : undefined,
+        keyTakeaways: targetLesson.key_takeaways,
+        currentQuizQuestion: activeQuizLesson
+          ? getQuestionsByLessonId(activeQuizLesson.id)[0]
+          : undefined,
+        studentName: user?.user_metadata?.name || 'Anurag',
+      }
+    : currentSubject
+    ? {
+        subjectId: currentSubject.id,
+        subjectName: currentSubject.name,
+        lessonId: '',
+        lessonTitle: currentSubject.name,
+        difficulty: 'Beginner',
+        studentName: user?.user_metadata?.name || 'Anurag',
+      }
+    : undefined;
+
+  // Configure manual scroll restoration so browser refresh starts at the top
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    scrollToTop({ behavior: 'instant' });
+  }, []);
+
+  // Screen identifier for instant scroll reset on route/screen changes
+  const currentScreenKey = activeQuizLesson
+    ? `quiz-${activeQuizLesson.id}`
+    : activeLesson
+    ? `lesson-${activeLesson.id}`
+    : selectedSubjectId
+    ? `roadmap-${selectedSubjectId}`
+    : `tab-${activeTab}`;
+
+  useScrollToTop([currentScreenKey], { behavior: 'instant' });
 
   // Loading spinner during session restoration
   if (loading) {
@@ -49,6 +121,7 @@ function MainAppContent() {
         onComplete={() => {
           refreshUserData();
           setActiveTab('home');
+          scrollToTop({ behavior: 'instant' });
         }}
       />
     );
@@ -58,14 +131,14 @@ function MainAppContent() {
   const handleStartLesson = (lesson: Lesson) => {
     setActiveLesson(lesson);
     setActiveQuizLesson(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop({ behavior: 'instant' });
   };
 
   const handleStartQuizFromLesson = () => {
     if (activeLesson) {
       setActiveQuizLesson(activeLesson);
       setActiveLesson(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToTop({ behavior: 'instant' });
     }
   };
 
@@ -79,17 +152,18 @@ function MainAppContent() {
     } else {
       setActiveTab('home');
     }
+    scrollToTop({ behavior: 'instant' });
   };
 
   const handleSelectSubject = (subjectId: SubjectId) => {
     setSelectedSubjectId(subjectId);
     setActiveTab('learn');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop({ behavior: 'instant' });
   };
 
   const handleStartRevision = () => {
     setActiveTab('revision');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop({ behavior: 'instant' });
   };
 
   const handleTabChange = (tab: ActiveTab) => {
@@ -99,7 +173,7 @@ function MainAppContent() {
     if (tab !== 'learn') {
       setSelectedSubjectId(null);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop({ behavior: 'instant' });
   };
 
   return (
@@ -119,6 +193,7 @@ function MainAppContent() {
             lesson={activeQuizLesson}
             questions={getQuestionsByLessonId(activeQuizLesson.id)}
             onFinish={handleFinishQuiz}
+            onOpenTia={handleOpenTia}
           />
         ) : activeLesson ? (
           /* Active Lesson Player */
@@ -131,6 +206,7 @@ function MainAppContent() {
               }
             }}
             onStartQuiz={handleStartQuizFromLesson}
+            onOpenTia={handleOpenTia}
           />
         ) : activeTab === 'home' ? (
           /* Home Dashboard */
@@ -173,6 +249,20 @@ function MainAppContent() {
       {!activeLesson && !activeQuizLesson && (
         <BottomNav activeTab={activeTab} setActiveTab={handleTabChange} />
       )}
+
+      {/* Floating Tia Voice Learning Assistant Button */}
+      <TiaFloatingButton
+        onClick={() => handleOpenTia('chat')}
+        hasLessonContext={Boolean(activeLesson || activeQuizLesson)}
+      />
+
+      {/* Tia AI Learning Assistant Modal/Sheet */}
+      <TiaAssistantModal
+        isOpen={isTiaOpen}
+        onClose={() => setIsTiaOpen(false)}
+        context={tiaContext}
+        initialMode={tiaInitialMode}
+      />
 
       {/* Schema & Supabase Setup Modal */}
       <SchemaModal
