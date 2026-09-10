@@ -213,17 +213,44 @@ export interface TiaMessage {
   };
 }
 
+export interface TiaLanguageConfig {
+  language: 'hi' | 'en';
+  locale: 'hi-IN' | 'en-IN';
+  ttsLocale: 'hi-IN' | 'en-IN';
+  responseLanguage: 'Hindi' | 'English';
+  systemInstruction: string;
+}
+
 export interface TiaLessonContext {
   subjectId: SubjectId;
   subjectName: string;
+  subjectName_hi?: string;
   lessonId: string;
   lessonTitle: string;
+  lessonTitle_hi?: string;
   lessonSubtitle?: string;
+  lessonSubtitle_hi?: string;
   lessonHook?: string;
+  lessonHook_hi?: string;
   difficulty?: string;
-  sections?: { title: string; content: string; example?: string }[];
-  practicalExample?: { scenario: string; analysis: string; tip: string };
+  sections?: {
+    title: string;
+    title_hi?: string;
+    content: string;
+    content_hi?: string;
+    example?: string;
+    example_hi?: string;
+  }[];
+  practicalExample?: {
+    scenario: string;
+    scenario_hi?: string;
+    analysis: string;
+    analysis_hi?: string;
+    tip: string;
+    tip_hi?: string;
+  };
   keyTakeaways?: string[];
+  keyTakeaways_hi?: string[];
   currentQuizQuestion?: Question;
   studentName?: string;
 }

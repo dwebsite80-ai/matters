@@ -3,6 +3,7 @@ import { AppLanguage } from '../types';
 
 interface LanguageContextType {
   language: AppLanguage;
+  currentLanguage: AppLanguage;
   setLanguage: (lang: AppLanguage) => void;
   toggleLanguage: () => void;
   localize: (enText?: string, hiText?: string) => string;
@@ -135,6 +136,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     <LanguageContext.Provider
       value={{
         language,
+        currentLanguage: language,
         setLanguage,
         toggleLanguage,
         localize,
