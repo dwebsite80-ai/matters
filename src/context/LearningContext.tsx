@@ -8,6 +8,7 @@ import {
   UserStats,
   UserPreferences,
   SubjectId,
+  StreakStatus,
 } from '../types';
 import { useAuth } from './AuthContext';
 import {
@@ -27,6 +28,11 @@ import {
   dbSaveUserStats,
   dbSaveUserPreferences,
 } from '../lib/supabase';
+import {
+  reconcileStreakOnAppOpen,
+  updateStreakAfterLesson,
+  getStreakStatusMessage,
+} from '../lib/streakHelper';
 
 interface LearningContextType {
   subjects: Subject[];
@@ -35,6 +41,10 @@ interface LearningContextType {
   stats: UserStats | null;
   loadingData: boolean;
   todayMission: Lesson | null;
+  streakStatus: StreakStatus;
+  currentStreak: number;
+  longestStreak: number;
+  previousBrokenStreak: number;
   getSubjectProgress: (subjectId: SubjectId) => {
     completedCount: number;
     totalCount: number;
@@ -77,8 +87,12 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           dbGetUserProgress(user.id),
           dbGetUserStats(user.id),
         ]);
+        const { stats: reconciledStats, hasChanged } = reconcileStreakOnAppOpen(userStats);
         setProgressMap(progress);
-        setStats(userStats);
+        setStats(reconciledStats);
+        if (hasChanged) {
+          await dbSaveUserStats(reconciledStats);
+        }
       } catch (e) {
         console.error('Error loading learning data', e);
       } finally {
@@ -89,6 +103,30 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadData();
   }, [user]);
 
+  // Re-verify streak status when tab regains visibility or focus (e.g. across midnight)
+  useEffect(() => {
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' && user) {
+        setStats((prevStats) => {
+          if (!prevStats) return prevStats;
+          const { stats: reconciled, hasChanged } = reconcileStreakOnAppOpen(prevStats);
+          if (hasChanged) {
+            dbSaveUserStats(reconciled);
+          }
+          return reconciled;
+        });
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
+  }, [user]);
+
   const refreshLearningData = async () => {
     if (!user) return;
     try {
@@ -96,50 +134,15 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         dbGetUserProgress(user.id),
         dbGetUserStats(user.id),
       ]);
+      const { stats: reconciledStats, hasChanged } = reconcileStreakOnAppOpen(userStats);
       setProgressMap(progress);
-      setStats(userStats);
+      setStats(reconciledStats);
+      if (hasChanged) {
+        await dbSaveUserStats(reconciledStats);
+      }
     } catch (e) {
       console.error('Error refreshing learning data', e);
     }
-  };
-
-  // Helper to calculate streak update
-  const calculateUpdatedStreak = (currentStats: UserStats): { currentStreak: number; longestStreak: number; streakIncreased: boolean; todayStr: string } => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
-    let currentStreak = currentStats.current_streak;
-    let longestStreak = currentStats.longest_streak;
-    let streakIncreased = false;
-
-    if (!currentStats.last_activity_date) {
-      // First activity
-      currentStreak = 1;
-      streakIncreased = true;
-    } else {
-      const lastDate = new Date(currentStats.last_activity_date);
-      const diffTime = today.getTime() - lastDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-      if (currentStats.last_activity_date === todayStr) {
-        // Already logged activity today, keep streak
-        streakIncreased = false;
-      } else if (diffDays === 1) {
-        // Consecutive day
-        currentStreak += 1;
-        streakIncreased = true;
-      } else {
-        // Missed one or more days
-        currentStreak = 1;
-        streakIncreased = true;
-      }
-    }
-
-    if (currentStreak > longestStreak) {
-      longestStreak = currentStreak;
-    }
-
-    return { currentStreak, longestStreak, streakIncreased, todayStr };
   };
 
   // Complete a lesson and its quiz
@@ -182,8 +185,8 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setProgressMap(updatedProgressMap);
     await dbSaveUserProgress(newProgress);
 
-    // 2. Update Stats & Streak
-    const currentStats = stats || {
+    // 2. Update Stats & Streak using streakHelper
+    const currentStats: UserStats = stats || {
       user_id: user.id,
       total_xp: 0,
       current_streak: 0,
@@ -193,14 +196,12 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       revisions_completed_count: 0,
     };
 
-    const { currentStreak, longestStreak, streakIncreased, todayStr } = calculateUpdatedStreak(currentStats);
+    const { stats: baseStats } = reconcileStreakOnAppOpen(currentStats);
+    const { updatedStats: streakUpdated, streakIncreased } = updateStreakAfterLesson(baseStats);
 
     const updatedStats: UserStats = {
-      ...currentStats,
+      ...streakUpdated,
       total_xp: currentStats.total_xp + totalGainedXP,
-      current_streak: currentStreak,
-      longest_streak: longestStreak,
-      last_activity_date: todayStr,
       lessons_completed_count: isFirstTimeCompletion
         ? currentStats.lessons_completed_count + 1
         : currentStats.lessons_completed_count,
@@ -222,7 +223,7 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // 10 XP for revision completion + 5 XP per correct answer
     const gainedXP = 10 + correctCount * 5;
 
-    const currentStats = stats || {
+    const currentStats: UserStats = stats || {
       user_id: user.id,
       total_xp: 0,
       current_streak: 0,
@@ -232,14 +233,12 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       revisions_completed_count: 0,
     };
 
-    const { currentStreak, longestStreak, todayStr } = calculateUpdatedStreak(currentStats);
+    const { stats: baseStats } = reconcileStreakOnAppOpen(currentStats);
+    const { updatedStats: streakUpdated } = updateStreakAfterLesson(baseStats);
 
     const updatedStats: UserStats = {
-      ...currentStats,
+      ...streakUpdated,
       total_xp: currentStats.total_xp + gainedXP,
-      current_streak: currentStreak,
-      longest_streak: longestStreak,
-      last_activity_date: todayStr,
       revisions_completed_count: currentStats.revisions_completed_count + 1,
     };
 
@@ -374,6 +373,11 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await dbSaveUserPreferences(newPrefs);
   };
 
+  const streakStatus: StreakStatus = stats?.streak_status || stats?.streakStatus || 'not_started';
+  const currentStreak = stats?.current_streak ?? stats?.currentStreak ?? 0;
+  const longestStreak = stats?.longest_streak ?? stats?.longestStreak ?? 0;
+  const previousBrokenStreak = stats?.previous_broken_streak ?? stats?.previousBrokenStreak ?? 0;
+
   return (
     <LearningContext.Provider
       value={{
@@ -383,6 +387,10 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         stats,
         loadingData,
         todayMission,
+        streakStatus,
+        currentStreak,
+        longestStreak,
+        previousBrokenStreak,
         getSubjectProgress,
         getTopicStatus,
         getNextRecommendedTopic,

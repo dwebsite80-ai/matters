@@ -254,6 +254,15 @@ export async function dbGetUserStats(userId: string): Promise<UserStats> {
     last_activity_date: null,
     lessons_completed_count: 0,
     revisions_completed_count: 0,
+    streak_status: 'not_started',
+    completed_dates: [],
+    previous_broken_streak: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: null,
+    streakStatus: 'not_started',
+    completedDates: [],
+    previousBrokenStreak: 0,
   };
 
   if (isSupabaseConfigured && supabase) {
@@ -265,6 +274,7 @@ export async function dbGetUserStats(userId: string): Promise<UserStats> {
         .single();
       if (!error && data) {
         return {
+          ...defaultStats,
           user_id: data.user_id,
           total_xp: data.total_xp || 0,
           current_streak: data.current_streak || 0,
@@ -282,7 +292,31 @@ export async function dbGetUserStats(userId: string): Promise<UserStats> {
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}stats_${userId}`);
     if (raw) {
-      return { ...defaultStats, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      const rawDate = parsed.last_activity_date ?? parsed.lastActivityDate ?? null;
+      const cleanDate = rawDate ? (rawDate.includes('T') ? rawDate.split('T')[0] : rawDate) : null;
+      const curStreak = parsed.current_streak ?? parsed.currentStreak ?? 0;
+      const longStreak = parsed.longest_streak ?? parsed.longestStreak ?? 0;
+      const streakStat = parsed.streak_status ?? parsed.streakStatus ?? (curStreak > 0 ? 'active' : 'not_started');
+      const compDates = parsed.completed_dates ?? parsed.completedDates ?? [];
+      const prevBroken = parsed.previous_broken_streak ?? parsed.previousBrokenStreak ?? 0;
+
+      return {
+        ...defaultStats,
+        ...parsed,
+        current_streak: curStreak,
+        longest_streak: longStreak,
+        last_activity_date: cleanDate,
+        streak_status: streakStat,
+        completed_dates: compDates,
+        previous_broken_streak: prevBroken,
+        currentStreak: curStreak,
+        longestStreak: longStreak,
+        lastActivityDate: cleanDate,
+        streakStatus: streakStat,
+        completedDates: compDates,
+        previousBrokenStreak: prevBroken,
+      };
     }
   } catch (e) {
     console.error('Error loading stats locally', e);
@@ -292,8 +326,37 @@ export async function dbGetUserStats(userId: string): Promise<UserStats> {
 }
 
 export async function dbSaveUserStats(stats: UserStats): Promise<void> {
+  const currentStreak = stats.current_streak ?? stats.currentStreak ?? 0;
+  const longestStreak = stats.longest_streak ?? stats.longestStreak ?? 0;
+  const lastActivityDate = stats.last_activity_date ?? stats.lastActivityDate ?? null;
+  const streakStatus = stats.streak_status ?? stats.streakStatus ?? 'not_started';
+  const completedDates = stats.completed_dates ?? stats.completedDates ?? [];
+  const previousBrokenStreak = stats.previous_broken_streak ?? stats.previousBrokenStreak ?? 0;
+
+  const payload: UserStats = {
+    ...stats,
+    current_streak: currentStreak,
+    longest_streak: longestStreak,
+    last_activity_date: lastActivityDate,
+    streak_status: streakStatus,
+    completed_dates: completedDates,
+    previous_broken_streak: previousBrokenStreak,
+    currentStreak,
+    longestStreak,
+    lastActivityDate,
+    streakStatus,
+    completedDates,
+    previousBrokenStreak,
+  };
+
   try {
-    localStorage.setItem(`${STORAGE_PREFIX}stats_${stats.user_id}`, JSON.stringify(stats));
+    localStorage.setItem(`${STORAGE_PREFIX}stats_${stats.user_id}`, JSON.stringify(payload));
+    // Also save top-level keys for easy access/inspection
+    localStorage.setItem('currentStreak', String(currentStreak));
+    localStorage.setItem('longestStreak', String(longestStreak));
+    localStorage.setItem('lastActivityDate', lastActivityDate || '');
+    localStorage.setItem('streakStatus', streakStatus);
+    localStorage.setItem('completedDates', JSON.stringify(completedDates));
   } catch (e) {
     console.error('Error saving stats locally', e);
   }
@@ -484,14 +547,30 @@ export function seedDefaultDemoUser(): UserProfile {
   localStorage.setItem(`${STORAGE_PREFIX}progress_${demoId}`, JSON.stringify(initialProgress));
 
   // Seed stats with 5 day streak and 125 XP
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yYear = yesterday.getFullYear();
+  const yMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
+  const yDay = String(yesterday.getDate()).padStart(2, '0');
+  const yesterdayDateStr = `${yYear}-${yMonth}-${yDay}`;
+
   const stats: UserStats = {
     user_id: demoId,
     total_xp: 125,
     current_streak: 5,
     longest_streak: 7,
-    last_activity_date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+    last_activity_date: yesterdayDateStr,
     lessons_completed_count: 3,
     revisions_completed_count: 1,
+    streak_status: 'continue_today',
+    completed_dates: [yesterdayDateStr],
+    previous_broken_streak: 0,
+    currentStreak: 5,
+    longestStreak: 7,
+    lastActivityDate: yesterdayDateStr,
+    streakStatus: 'continue_today',
+    completedDates: [yesterdayDateStr],
+    previousBrokenStreak: 0,
   };
   localStorage.setItem(`${STORAGE_PREFIX}stats_${demoId}`, JSON.stringify(stats));
 

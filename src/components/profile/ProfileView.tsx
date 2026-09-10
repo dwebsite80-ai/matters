@@ -28,8 +28,11 @@ interface ProfileViewProps {
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenSchemaModal }) => {
   const { user, preferences, logOut, isConfiguredWithSupabase } = useAuth();
-  const { stats, savePreferences } = useLearning();
+  const { stats, savePreferences, streakStatus, currentStreak: ctxStreak, longestStreak: ctxLongest } = useLearning();
   const { language, setLanguage, t } = useLanguage();
+
+  const currentStreak = ctxStreak ?? stats?.current_streak ?? 0;
+  const longestStreak = ctxLongest ?? stats?.longest_streak ?? 0;
 
   const [dailyMinutes, setDailyMinutes] = useState<DailyMinutes>(
     preferences?.daily_minutes || 10
@@ -208,13 +211,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenSchemaModal }) =
 
         {/* Mini stats row */}
         <div className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-black/5 text-center">
-          <div className="p-4 rounded-2xl bg-[#FEF2E0] border border-[#F5D7A1]">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C5E1A]">
+          <div className={`p-4 rounded-2xl border ${
+            streakStatus === 'broken'
+              ? 'bg-[#FDF2F2] border-[#F8B4B4]'
+              : 'bg-[#FEF2E0] border-[#F5D7A1]'
+          }`}>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${
+              streakStatus === 'broken' ? 'text-[#9B1C1C]' : 'text-[#8C5E1A]'
+            }`}>
               {language === 'hi' ? 'दैनिक स्ट्रीक' : 'Streak'}
             </span>
-            <p className="text-2xl font-serif italic text-[#8C5E1A] mt-0.5">
-              {stats?.current_streak || 0} {language === 'hi' ? 'दिन' : 'Days'}
+            <p className={`text-2xl font-serif italic mt-0.5 ${
+              streakStatus === 'broken' ? 'text-[#9B1C1C]' : 'text-[#8C5E1A]'
+            }`}>
+              {streakStatus === 'broken'
+                ? (language === 'hi' ? '0 दिन (टूटी)' : '0 Days (Broken)')
+                : `${currentStreak} ${language === 'hi' ? 'दिन' : 'Days'}`}
             </p>
+            {longestStreak > 0 && (
+              <span className="text-[10px] text-gray-500 font-mono block mt-1">
+                {language === 'hi' ? `सर्वश्रेष्ठ: ${longestStreak} दिन` : `Best: ${longestStreak}d`}
+              </span>
+            )}
           </div>
           <div className="p-4 rounded-2xl bg-[#E0F2FE] border border-[#A1D7F5]">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#1A5E8C]">

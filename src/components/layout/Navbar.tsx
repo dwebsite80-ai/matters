@@ -13,10 +13,10 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenSchemaModal }) => {
   const { user, isConfiguredWithSupabase } = useAuth();
-  const { stats } = useLearning();
+  const { stats, streakStatus, currentStreak: ctxStreak, previousBrokenStreak } = useLearning();
   const { language, setLanguage, t } = useLanguage();
 
-  const currentStreak = stats?.current_streak || 0;
+  const currentStreak = ctxStreak ?? stats?.current_streak ?? 0;
   const totalXp = stats?.total_xp || 0;
 
   const initials = user?.name
@@ -133,12 +133,22 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenS
               {/* Streak Badge (visible on lg screens to avoid crowding tablets) */}
               <div 
                 onClick={() => setActiveTab('progress')}
-                className="hidden lg:flex items-center gap-1.5 bg-[#FEF2E0] px-3 py-1.5 rounded-full border border-[#F5D7A1] cursor-pointer hover:scale-105 active:scale-95 transition-all"
-                title="Daily learning streak"
+                className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer hover:scale-105 active:scale-95 transition-all ${
+                  streakStatus === 'broken'
+                    ? 'bg-[#FDF2F2] border-[#F8B4B4] text-[#9B1C1C]'
+                    : streakStatus === 'continue_today'
+                    ? 'bg-[#FEF9E7] border-[#F9E79F] text-[#7D6608]'
+                    : streakStatus === 'active'
+                    ? 'bg-[#FEF2E0] border-[#F5D7A1] text-[#8C5E1A]'
+                    : 'bg-gray-50 border-gray-200 text-gray-500'
+                }`}
+                title={streakStatus === 'broken' ? 'Streak broken. Start a new streak today!' : 'Daily learning streak'}
               >
-                <span className="text-sm">🔥</span>
-                <span className="text-xs font-bold text-[#8C5E1A]">
-                  {currentStreak}{language === 'hi' ? ' दिन' : 'd Streak'}
+                <span className="text-sm">{streakStatus === 'broken' ? '💔' : '🔥'}</span>
+                <span className="text-xs font-bold">
+                  {streakStatus === 'broken'
+                    ? (language === 'hi' ? '0 दिन (टूटी)' : '0d (Broken)')
+                    : `${currentStreak}${language === 'hi' ? ' दिन' : 'd Streak'}`}
                 </span>
               </div>
 

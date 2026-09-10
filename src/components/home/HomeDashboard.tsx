@@ -9,11 +9,13 @@ import {
   BookOpen,
   ChevronRight,
   TrendingUp,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLearning } from '../../context/LearningContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Lesson, SubjectId, ActiveTab } from '../../types';
+import { getStreakStatusMessage } from '../../lib/streakHelper';
 
 interface HomeDashboardProps {
   onStartLesson: (lesson: Lesson) => void;
@@ -29,7 +31,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   setActiveTab,
 }) => {
   const { user, preferences } = useAuth();
-  const { stats, todayMission, getSubjectProgress, subjects } = useLearning();
+  const {
+    stats,
+    todayMission,
+    getSubjectProgress,
+    subjects,
+    streakStatus,
+    currentStreak,
+    longestStreak,
+    previousBrokenStreak,
+  } = useLearning();
   const { language, t, localize } = useLanguage();
 
   // Dynamic greeting based on current time
@@ -46,9 +57,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   };
 
   const userName = user?.name ? user.name.split(' ')[0] : (language === 'hi' ? 'साथी' : 'Learner');
-  const currentStreak = stats?.current_streak || 0;
   const totalXp = stats?.total_xp || 0;
   const completedCount = stats?.lessons_completed_count || 0;
+
+  const streakMessage = getStreakStatusMessage(
+    streakStatus,
+    currentStreak,
+    previousBrokenStreak,
+    language as 'en' | 'hi'
+  );
 
   // Selected subjects to display progress for (or all subjects if none filtered)
   const userSubjects = preferences?.selected_subjects?.length
@@ -118,10 +135,24 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-[#FEF2E0] px-3.5 py-1.5 rounded-full border border-[#F5D7A1]">
-            <span className="text-sm">🔥</span>
-            <span className="text-xs font-bold text-[#8C5E1A]">
-              {currentStreak} {language === 'hi' ? 'दिन स्ट्रीक' : 'Day Streak'}
+          <div
+            onClick={() => setActiveTab('progress')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border cursor-pointer hover:opacity-90 transition-all ${
+              streakStatus === 'broken'
+                ? 'bg-[#FDF2F2] border-[#F8B4B4] text-[#9B1C1C]'
+                : streakStatus === 'continue_today'
+                ? 'bg-[#FEF9E7] border-[#F9E79F] text-[#7D6608]'
+                : streakStatus === 'active'
+                ? 'bg-[#FEF2E0] border-[#F5D7A1] text-[#8C5E1A]'
+                : 'bg-gray-50 border-gray-200 text-gray-600'
+            }`}
+            title={streakMessage}
+          >
+            <span className="text-sm">{streakStatus === 'broken' ? '💔' : '🔥'}</span>
+            <span className="text-xs font-bold">
+              {streakStatus === 'broken'
+                ? (language === 'hi' ? 'स्ट्रीक टूटी (0 दिन)' : 'Streak Broken (0d)')
+                : `${currentStreak} ${language === 'hi' ? 'दिन स्ट्रीक' : 'Day Streak'}`}
             </span>
           </div>
           <div className="flex items-center gap-1.5 bg-[#E0F2FE] px-3.5 py-1.5 rounded-full border border-[#A1D7F5]">
@@ -130,6 +161,115 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Streak Status Notification Banner */}
+      {streakStatus === 'broken' && (
+        <div className="bg-[#FFF5F5] border border-[#FDE8E8] rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[#9B1C1C] shadow-xs animate-fadeIn">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#FDE8E8] flex items-center justify-center shrink-0 text-lg shadow-xs">
+              💔
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#9B1C1C]">
+                  {language === 'hi' ? 'दैनिक स्ट्रीक टूट गई' : 'Streak Broken'}
+                </span>
+                <span className="text-[10px] bg-white border border-[#F8B4B4] px-2 py-0.5 rounded-full font-mono font-bold text-[#9B1C1C]">
+                  0 {language === 'hi' ? 'दिन' : 'days'}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-[#9B1C1C]/90 mt-0.5 font-normal">
+                {streakMessage}
+              </p>
+            </div>
+          </div>
+          {longestStreak > 0 && (
+            <div className="self-end sm:self-center shrink-0">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-white border border-[#FDE8E8] text-[#9B1C1C] shadow-2xs">
+                {language === 'hi' ? `सर्वश्रेष्ठ: ${longestStreak} दिन` : `Longest: ${longestStreak}d`}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {streakStatus === 'continue_today' && (
+        <div className="bg-[#FEF9E7] border border-[#FCF3CF] rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[#7D6608] shadow-xs animate-fadeIn">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#FCF3CF] flex items-center justify-center shrink-0 text-lg shadow-xs">
+              ⏳
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#7D6608]">
+                  {language === 'hi' ? 'स्ट्रीक जारी रखें' : 'Keep Your Streak Alive'}
+                </span>
+                <span className="text-[10px] bg-white border border-[#F9E79F] px-2 py-0.5 rounded-full font-mono font-bold text-[#7D6608]">
+                  {currentStreak} {language === 'hi' ? 'दिन' : 'days'}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-[#7D6608]/90 mt-0.5 font-normal">
+                {streakMessage}
+              </p>
+            </div>
+          </div>
+          {longestStreak > 0 && (
+            <div className="self-end sm:self-center shrink-0">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-white border border-[#FCF3CF] text-[#7D6608] shadow-2xs">
+                {language === 'hi' ? `सर्वश्रेष्ठ: ${longestStreak} दिन` : `Longest: ${longestStreak}d`}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {streakStatus === 'active' && (
+        <div className="bg-[#F0FDF4] border border-[#DCFCE7] rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[#166534] shadow-xs animate-fadeIn">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#DCFCE7] flex items-center justify-center shrink-0 text-lg shadow-xs">
+              🔥
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#166534]">
+                  {language === 'hi' ? 'आज का लक्ष्य पूर्ण!' : "Today's Goal Achieved!"}
+                </span>
+                <span className="text-[10px] bg-white border border-[#BBF7D0] px-2 py-0.5 rounded-full font-mono font-bold text-[#166534]">
+                  {currentStreak} {language === 'hi' ? 'दिन' : 'days'}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-[#166534]/90 mt-0.5 font-normal">
+                {streakMessage}
+              </p>
+            </div>
+          </div>
+          {longestStreak > 0 && (
+            <div className="self-end sm:self-center shrink-0">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-white border border-[#DCFCE7] text-[#166534] shadow-2xs">
+                {language === 'hi' ? `सर्वश्रेष्ठ: ${longestStreak} दिन` : `Longest: ${longestStreak}d`}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {streakStatus === 'not_started' && (
+        <div className="bg-[#F9FAFB] border border-black/5 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-gray-700 shadow-xs animate-fadeIn">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0 text-lg shadow-xs">
+              🌱
+            </div>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-800">
+                {language === 'hi' ? 'दैनिक स्ट्रीक शुरू करें' : 'Start Your Streak'}
+              </span>
+              <p className="text-xs sm:text-sm text-gray-600 mt-0.5 font-normal">
+                {streakMessage}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Large Featured Hero Card: Today's Mission */}
       {todayMission && (

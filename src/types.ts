@@ -163,6 +163,8 @@ export interface UserProgress {
   last_revised_at?: string;
 }
 
+export type StreakStatus = 'not_started' | 'active' | 'continue_today' | 'broken';
+
 export interface UserStats {
   user_id: string;
   total_xp: number;
@@ -171,6 +173,16 @@ export interface UserStats {
   last_activity_date: string | null;
   lessons_completed_count: number;
   revisions_completed_count: number;
+  streak_status?: StreakStatus;
+  completed_dates?: string[];
+  previous_broken_streak?: number;
+  // CamelCase aliases for interoperability with localStorage specs
+  currentStreak?: number;
+  longestStreak?: number;
+  lastActivityDate?: string | null;
+  streakStatus?: StreakStatus;
+  completedDates?: string[];
+  previousBrokenStreak?: number;
 }
 
 export type ActiveTab = 'home' | 'learn' | 'revision' | 'progress' | 'profile';
