@@ -81,16 +81,27 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
         ? context?.lessonTitle_hi || context?.lessonTitle
         : context?.lessonTitle;
 
+      const greetingText = isHindi
+        ? lessonName
+          ? `नमस्ते! मैं हूँ **टिया**, आपकी एआई लर्निंग गाइड। 🎙️\n\nमैं देख रही हूँ कि आप **${lessonName}** पढ़ रहे हैं। कहीं उलझन है, आसान व्याख्या चाहिए, या इसे मज़ाकिया अंदाज़ में समझना है? मुझसे कुछ भी पूछिए या माइक दबाकर बोलिए!`
+          : `नमस्ते! मैं हूँ **टिया**, आपकी एआई वॉइस ट्यूटर। 🎙️\n\nमैं कठिन कॉन्सेप्ट्स को आसान, याद रखने योग्य और मज़ेदार बनाने के लिए यहाँ हूँ। आप जो भी सीखना चाहते हैं, बेझिझक बोलिए या टाइप कीजिए!`
+        : lessonName
+        ? `Hey! I'm **Tia**, your AI learning companion. 🎙️\n\nI see you're working on **${lessonName}**. Stuck anywhere, need a simpler explanation, or want me to make it funny? Ask me anything or tap the mic to speak!`
+        : `Hey! I'm **Tia**, your AI voice tutor. 🎙️\n\nI'm here to help make complex concepts simple, memorable, and fun. Speak or type whatever you'd like to learn!`;
+
+      const greetingSpeech = isHindi
+        ? lessonName
+          ? `नमस्ते! मैं हूँ टिया, आपकी एआई लर्निंग गाइड। मैं देख रही हूँ कि आप ${lessonName} पढ़ रहे हैं। कहीं उलझन है या आसान व्याख्या चाहिए, मुझसे कुछ भी पूछिए!`
+          : `नमस्ते! मैं हूँ टिया, आपकी एआई वॉइस ट्यूटर। कठिन कॉन्सेप्ट्स को आसान और मज़ेदार बनाने के लिए मैं यहाँ हूँ। बेझिझक पूछिए!`
+        : lessonName
+        ? `Hey! I'm Tia, your AI learning companion. I see you're working on ${lessonName}. Ask me anything or tap the mic to speak!`
+        : `Hey! I'm Tia, your AI voice tutor. I'm here to help make complex concepts simple and fun. Ask me anything!`;
+
       const greeting: TiaMessage = {
         id: 'welcome-msg',
         sender: 'tia',
-        text: isHindi
-          ? lessonName
-            ? `नमस्ते! मैं हूँ **टिया**, आपकी एआई लर्निंग गाइड। 🎙️\n\nमैं देख रही हूँ कि आप **${lessonName}** पढ़ रहे हैं। कहीं उलझन है, आसान व्याख्या चाहिए, या इसे मज़ाकिया अंदाज़ में समझना है? मुझसे कुछ भी पूछिए या माइक दबाकर बोलिए!`
-            : `नमस्ते! मैं हूँ **टिया**, आपकी एआई वॉइस ट्यूटर। 🎙️\n\nमैं कठिन कॉन्सेप्ट्स को आसान, याद रखने योग्य और मज़ेदार बनाने के लिए यहाँ हूँ। आप जो भी सीखना चाहते हैं, बेझिझक बोलिए या टाइप कीजिए!`
-          : lessonName
-          ? `Hey! I'm **Tia**, your AI learning companion. 🎙️\n\nI see you're working on **${lessonName}**. Stuck anywhere, need a simpler explanation, or want me to make it funny? Ask me anything or tap the mic to speak!`
-          : `Hey! I'm **Tia**, your AI voice tutor. 🎙️\n\nI'm here to help make complex concepts simple, memorable, and fun. Speak or type whatever you'd like to learn!`,
+        text: greetingText,
+        speechText: greetingSpeech,
         mode: 'chat',
         timestamp: Date.now(),
         quickActions: isHindi
@@ -175,14 +186,15 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
             currentLanguage === 'hi' ? 'नमस्ते टिया!' : 'Hello Tia!',
             context,
             'chat',
-            currentLanguage
+            currentLanguage,
+            messages
           );
           break;
       }
 
       setMessages((prev) => [...prev, response]);
       if (voiceEnabled) {
-        speakText(response.text);
+        speakText(response.speechText || response.text);
       } else {
         setTiaState('idle');
       }
@@ -248,7 +260,7 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
 
         setMessages((prev) => [...prev, tiaReply]);
         if (voiceEnabled) {
-          speakText(tiaReply.text);
+          speakText(tiaReply.speechText || tiaReply.text);
         } else {
           setTiaState('idle');
         }
@@ -264,24 +276,25 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
         );
         setMessages((prev) => [...prev, speakingEval]);
         if (voiceEnabled) {
-          speakText(speakingEval.text);
+          speakText(speakingEval.speechText || speakingEval.text);
         } else {
           setTiaState('idle');
         }
         return;
       }
 
-      // Default contextual message routing with currentLanguage
+      // Default contextual message routing with currentLanguage and conversation history
       const response = await tiaService.sendTextMessage(
         textToSend,
         context,
         activeMode,
-        currentLanguage
+        currentLanguage,
+        messages
       );
       setMessages((prev) => [...prev, response]);
 
       if (voiceEnabled) {
-        speakText(response.text);
+        speakText(response.speechText || response.text);
       } else {
         setTiaState('idle');
       }
@@ -301,7 +314,7 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
       setVoiceEnabled(true);
       const lastTia = [...messages].reverse().find((m) => m.sender === 'tia');
       if (lastTia) {
-        speakText(lastTia.text);
+        speakText(lastTia.speechText || lastTia.text);
       }
     }
   };
@@ -536,7 +549,7 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
                 {msg.sender === 'tia' && voiceEnabled && (
                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-black/5 text-[11px] text-gray-500">
                     <button
-                      onClick={() => speakText(msg.text)}
+                      onClick={() => speakText(msg.speechText || msg.text)}
                       className="flex items-center gap-1.5 hover:text-black transition-colors cursor-pointer font-medium"
                     >
                       <Volume2 className="w-3.5 h-3.5 text-indigo-600" />

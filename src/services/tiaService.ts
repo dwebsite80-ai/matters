@@ -5,9 +5,15 @@ import {
   TiaMode,
   TiaQuizEvaluation,
 } from '../types';
-import { getTiaLanguageConfig } from './tiaLanguageConfig';
+import { getTiaLanguageConfig, cleanTiaSpeechText } from './tiaLanguageConfig';
+import {
+  classifyUserQuestion,
+  generateKnowledgeResponse,
+  checkResponseRelevance,
+} from './tiaSemanticEngine';
+import { getCourseScope } from './tiaCourseRegistry';
 
-export { getTiaLanguageConfig };
+export { getTiaLanguageConfig, cleanTiaSpeechText };
 
 /**
  * Tia AI Voice Learning Assistant Service
@@ -649,173 +655,81 @@ export async function sendTextMessage(
   userText: string,
   context?: TiaLessonContext,
   mode: TiaMode = 'chat',
-  currentLanguage: AppLanguage = 'en'
+  currentLanguage: AppLanguage = 'en',
+  conversationHistory: TiaMessage[] = []
 ): Promise<TiaMessage> {
   const isHindi = currentLanguage === 'hi';
-  const text = userText.toLowerCase().trim();
+  const cleanInput = (userText || '').trim();
 
-  // Route to specific mode generators if trigger phrases are detected (multilingual detection)
-  if (
-    text.includes('funny') ||
-    text.includes('joke') ||
-    text.includes('comedy') ||
-    text.includes('मज़ाक') ||
-    text.includes('मजाक') ||
-    text.includes('हंस')
-  ) {
-    return generateFunnyExplanation(context, currentLanguage);
-  }
+  // 1. Try Server-Side API first (Gemini 3.8 Flash + Server-Side Pipeline)
+  try {
+    const response = await fetch('/api/tia/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: cleanInput,
+        context,
+        mode,
+        language: currentLanguage,
+        conversationHistory: conversationHistory.slice(-6),
+      }),
+    });
 
-  if (
-    text.includes('quiz') ||
-    text.includes('test') ||
-    text.includes('question') ||
-    text.includes('क्विज़') ||
-    text.includes('सवाल') ||
-    text.includes('प्रश्न')
-  ) {
-    return generateQuizQuestion(context, currentLanguage);
-  }
-
-  if (
-    text.includes('simpler') ||
-    text.includes('easy') ||
-    text.includes('confused') ||
-    text.includes('eli5') ||
-    text.includes('आसान') ||
-    text.includes('सरल') ||
-    text.includes('समझ नहीं')
-  ) {
-    return getLessonExplanation(context, true, currentLanguage);
-  }
-
-  if (
-    text.includes('example') ||
-    text.includes('scenario') ||
-    text.includes('उदाहरण') ||
-    text.includes('मिसाल')
-  ) {
-    const exampleScenario = isHindi
-      ? context?.practicalExample?.scenario_hi ||
-        context?.practicalExample?.scenario ||
-        'सोचिए आप सैलरी नेगोशिएशन कर रहे हैं या कोई मकान किराए पर ले रहे हैं।'
-      : context?.practicalExample?.scenario ||
-        'Imagine a situation where you are negotiating salary or renting an apartment.';
-
-    const lessonName = isHindi
-      ? context?.lessonTitle_hi || context?.lessonTitle || 'इस विषय'
-      : context?.lessonTitle || 'this topic';
-
-    const reply = isHindi
-      ? `यह रहा **${lessonName}** के लिए एक बिल्कुल स्पष्ट असली उदाहरण! 💡\n\n${exampleScenario}\n\n**यह क्यों मायने रखता है:** जब आप इस नियम को व्यावहारिक रूप से अपनाते हैं, तो आप उन आम गलतियों से बचते हैं जो लोगों के हज़ारों रुपये या हफ्तों की मेहनत बर्बाद कर देती हैं! आप क्या सोचते हैं?`
-      : `Here is a crystal-clear real-life scenario for **${lessonName}**! 💡\n\n${exampleScenario}\n\n**Why it matters:** When you apply this principle, you avoid traps that cost people thousands of rupees or weeks of wasted effort! What do you think?`;
-
-    return {
-      id: generateId(),
-      sender: 'tia',
-      text: reply,
-      mode: 'explain',
-      timestamp: Date.now(),
-      quickActions: isHindi
-        ? ['😂 मज़ाकिया अंदाज़ में बताओ', '🎯 क्विज़ पूछो', 'मुख्य बातें समझाओ']
-        : ['😂 Make it funny', '🎯 Quiz me now', 'Explain key takeaways'],
-    };
-  }
-
-  if (
-    text.includes('speaking') ||
-    text.includes('pronounce') ||
-    text.includes('practice speaking') ||
-    text.includes('बोलना') ||
-    text.includes('स्पीकिंग')
-  ) {
-    return getSpeakingPracticePrompt(context, currentLanguage);
-  }
-
-  if (
-    text.includes('revise') ||
-    text.includes('recap') ||
-    text.includes('revision') ||
-    text.includes('दोहरा') ||
-    text.includes('रिवीजन')
-  ) {
-    return generateRevisionQuestions(context, currentLanguage);
-  }
-
-  // Topic specific conceptual answers:
-  const lessonName = isHindi
-    ? context?.lessonTitle_hi || context?.lessonTitle || 'इस विषय'
-    : context?.lessonTitle || 'this topic';
-
-  const student = context?.studentName ? ` ${context.studentName}` : '';
-
-  // Inflation specific query
-  if (text.includes('inflation') || text.includes('महंगाई')) {
-    if (isHindi) {
-      return {
-        id: generateId(),
-        sender: 'tia',
-        text: `महंगाई (Inflation) का सीधा मतलब है: **पैसे की क्रय-शक्ति (Purchasing Power) का कम होना**। 📉\n\nअगर पिछले साल 100 रुपये में 10 समोसे आते थे और आज 100 रुपये में सिर्फ 8 समोसे आ रहे हैं, तो इसका मतलब है पैसे की वैल्यू घट गई।\n\n**टिया का गोल्डन टिप:** अगर आपका पैसा महंगाई की दर से कम दर पर बढ़ रहा है (जैसे बैंक खाते में 3%), तो आप वास्तव में हर साल गरीब हो रहे हैं! क्या इसका एक मज़ाकिया उदाहरण देखना चाहेंगे? 😂`,
-        mode: 'chat',
-        timestamp: Date.now(),
-        quickActions: ['😂 मज़ाकिया उदाहरण दो', '🎯 इस पर क्विज़ लो', '💡 इससे कैसे बचें?'],
-      };
-    } else {
-      return {
-        id: generateId(),
-        sender: 'tia',
-        text: `Inflation simply means **the erosion of your money's purchasing power over time**! 📉\n\nIf ₹100 bought you 10 samosas last year, but buys only 8 today, the price went up because currency value declined.\n\n**Tia's Golden Rule:** If your savings grow at 3% in a standard savings account while inflation runs at 6%, your real wealth is quietly shrinking! Want a funny analogy to lock this concept in? 😂`,
-        mode: 'chat',
-        timestamp: Date.now(),
-        quickActions: ['😂 Make it funny', '🎯 Quiz me on this', '💡 How to beat inflation?'],
-      };
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.ok && data?.message) {
+        return data.message;
+      }
     }
+  } catch (apiErr) {
+    // Network or server error - gracefully proceed to client semantic engine
   }
 
-  // Conversational response in selected language
-  if (isHindi) {
-    const wittyRepliesHi = [
-      `अरे दोस्त${student}, मैंने आपकी बात सुनी! **${lessonName}** में सबसे बड़ी गलती होती है चीज़ों को ज़रूरत से ज़्यादा मुश्किल समझना। आधार को सीधा रखिए: "कैसे" से पहले "क्यों" को समझें। अभी आपको किस बात में उलझन है?`,
-      `बहुत बढ़िया सवाल! **${lessonName}** को गाड़ी चलाने जैसा समझिए: शुरुआत में हर आईना 10 बार देखते हैं, पर एक बार आदत बन जाए तो सब अपने आप आसान हो जाता है। क्या एक छोटा विवरण चाहिए या कोई मज़ाकिया उदाहरण?`,
-      `अरे ज़बरदस्त सवाल! एक राज़ की बात बताऊँ: किताबी भाषा इसे 50 लाइनों में उलझाएगी, पर टिया आपको 2 वाक्यों में सीधा फंडा बताएगी। बताइए: इसे मज़ाकिया बनाऊँ या एक झटपट क्विज़ पूछूँ?`,
-    ];
-    const chosenReply = wittyRepliesHi[Math.floor(Math.random() * wittyRepliesHi.length)];
+  // 2. Client-Side Semantic Engine Fallback
+  // STEP 1, 2, 3: Classify question internally
+  const classification = classifyUserQuestion(cleanInput, context);
+  const course = classification.course;
+
+  // STEP 4C: If Out-of-Scope, return exact polite syllabus boundary message
+  if (classification.category === 'OUT_OF_SCOPE') {
+    const outText = isHindi
+      ? course.outOfScopeResponse.hi
+      : course.outOfScopeResponse.en;
+    const outSpeech = isHindi
+      ? `यह विषय मेरे वर्तमान कोर्स का हिस्सा नहीं है। मैं अभी आपको ${course.name} से जुड़े सवालों में मदद कर सकती हूँ।`
+      : `That topic is not part of my current course. I can help you with questions related to ${course.name}.`;
+    const quickActions = isHindi
+      ? [`💡 ${course.name} क्या है?`, `🎯 ${course.name} का क्विज़`, `इस कोर्स के मुख्य विषय`]
+      : [`💡 Tell me about ${course.name}`, `🎯 Quiz on ${course.name}`, `Topics in this course`];
 
     return {
       id: generateId(),
       sender: 'tia',
-      text: chosenReply,
+      text: outText,
+      speechText: outSpeech,
       mode: 'chat',
       timestamp: Date.now(),
-      quickActions: [
-        '💡 यह पाठ समझाइए',
-        '😂 मज़ाकिया अंदाज़ में बताओ',
-        '🎯 क्विज़ पूछो',
-        '🗣️ बोलने का अभ्यास',
-      ],
-    };
-  } else {
-    const wittyRepliesEn = [
-      `Hey${student}, I hear you loud and clear! On **${lessonName}**, the biggest trap is overcomplicating things. Keep the foundation simple: understand the 'why' before memorizing the 'how'. What specific part is on your mind?`,
-      `Great question! In **${lessonName}**, think of it like learning to drive: at first you double-check every mirror, but once the intuition clicks, it's smooth sailing. Want a bite-sized breakdown or a funny example?`,
-      `Terrific question! Here's the inside truth: most textbooks stretch this into 50 confusing lines, but Tia gives it to you straight in 2 crisp sentences. Tell me: should I make it funny or throw a quick quiz question at you?`,
-    ];
-    const chosenReply = wittyRepliesEn[Math.floor(Math.random() * wittyRepliesEn.length)];
-
-    return {
-      id: generateId(),
-      sender: 'tia',
-      text: chosenReply,
-      mode: 'chat',
-      timestamp: Date.now(),
-      quickActions: [
-        '💡 Explain This Lesson',
-        '😂 Make It Funny',
-        '🎯 Ask Quiz',
-        '🗣️ Practice Speaking',
-      ],
+      quickActions,
     };
   }
+
+  // STEP 4A & 4B: Educational inquiry within Course Scope
+  const knowledge = generateKnowledgeResponse(classification, currentLanguage, context);
+  const displayText = knowledge.displayText || knowledge.text;
+  const speechText =
+    knowledge.speechText || cleanTiaSpeechText(displayText, isHindi);
+
+  return {
+    id: generateId(),
+    sender: 'tia',
+    text: displayText,
+    speechText,
+    mode: 'chat',
+    timestamp: Date.now(),
+    quickActions: knowledge.quickActions,
+  };
 }
 
 /**
@@ -825,9 +739,16 @@ export async function sendVoiceMessage(
   transcript: string,
   context?: TiaLessonContext,
   mode: TiaMode = 'chat',
-  currentLanguage: AppLanguage = 'en'
+  currentLanguage: AppLanguage = 'en',
+  conversationHistory: TiaMessage[] = []
 ): Promise<TiaMessage> {
-  const response = await sendTextMessage(transcript, context, mode, currentLanguage);
+  const response = await sendTextMessage(
+    transcript,
+    context,
+    mode,
+    currentLanguage,
+    conversationHistory
+  );
   response.isVoice = true;
   return response;
 }

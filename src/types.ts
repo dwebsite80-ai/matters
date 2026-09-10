@@ -201,6 +201,7 @@ export interface TiaMessage {
   id: string;
   sender: 'user' | 'tia';
   text: string;
+  speechText?: string;
   mode?: TiaMode;
   timestamp: number;
   isVoice?: boolean;
@@ -225,6 +226,20 @@ export interface TiaLessonContext {
   subjectId: SubjectId;
   subjectName: string;
   subjectName_hi?: string;
+  courseDescription?: string;
+  courseDescription_hi?: string;
+  courseTopics?: {
+    id: string;
+    title: string;
+    title_hi?: string;
+    description?: string;
+  }[];
+  courseLessons?: {
+    id: string;
+    title: string;
+    title_hi?: string;
+    subtitle?: string;
+  }[];
   lessonId: string;
   lessonTitle: string;
   lessonTitle_hi?: string;

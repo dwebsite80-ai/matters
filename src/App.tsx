@@ -16,7 +16,7 @@ import { ProgressView } from './components/progress/ProgressView';
 import { ProfileView } from './components/profile/ProfileView';
 import { SchemaModal } from './components/modals/SchemaModal';
 import { ActiveTab, Lesson, SubjectId, TiaLessonContext, TiaMode } from './types';
-import { getQuestionsByLessonId, getLessonById, getSubjectById } from './data/initialContent';
+import { getQuestionsByLessonId, getLessonById, getSubjectById, getTopicsBySubject, ALL_LESSONS } from './data/initialContent';
 import { scrollToTop, useScrollToTop } from './lib/scrollHelper';
 import { TiaFloatingButton } from './components/tia/TiaFloatingButton';
 import { TiaAssistantModal } from './components/tia/TiaAssistantModal';
@@ -37,33 +37,64 @@ function MainAppContent() {
     setIsTiaOpen(true);
   };
 
-  // Build real-time lesson context for Tia
+  // Build real-time course & lesson context for Tia
   const currentSubjectId = activeLesson?.subject_id || activeQuizLesson?.subject_id || selectedSubjectId;
   const currentSubject = currentSubjectId ? getSubjectById(currentSubjectId) : undefined;
   const targetLesson = activeLesson || activeQuizLesson;
+
+  const courseTopics = currentSubjectId
+    ? getTopicsBySubject(currentSubjectId).map((t) => ({
+        id: t.id,
+        title: t.title,
+        title_hi: t.title_hi,
+        description: t.description,
+      }))
+    : undefined;
+
+  const courseLessons = currentSubjectId
+    ? ALL_LESSONS.filter((l) => l.subject_id === currentSubjectId).map((l) => ({
+        id: l.id,
+        title: l.title_en || l.title,
+        title_hi: l.title_hi,
+        subtitle: l.subtitle_en || l.subtitle,
+      }))
+    : undefined;
 
   const tiaContext: TiaLessonContext | undefined = targetLesson
     ? {
         subjectId: targetLesson.subject_id,
         subjectName: currentSubject?.name || targetLesson.subject_id,
+        subjectName_hi: currentSubject?.name_hi,
+        courseDescription: currentSubject?.description,
+        courseDescription_hi: currentSubject?.description_hi,
+        courseTopics,
+        courseLessons,
         lessonId: targetLesson.id,
         lessonTitle: targetLesson.title_en || targetLesson.title,
+        lessonTitle_hi: targetLesson.title_hi,
         lessonSubtitle: targetLesson.subtitle_en || targetLesson.subtitle,
+        lessonSubtitle_hi: targetLesson.subtitle_hi,
         lessonHook: targetLesson.hook_en || targetLesson.hook,
         difficulty: targetLesson.difficulty,
         sections: targetLesson.sections?.map((s) => ({
           title: s.title,
+          title_hi: s.title_hi,
           content: s.content,
+          content_hi: s.content_hi,
           example: s.example,
         })),
         practicalExample: targetLesson.practical_example
           ? {
               scenario: targetLesson.practical_example.scenario,
+              scenario_hi: targetLesson.practical_example.scenario_hi,
               analysis: targetLesson.practical_example.analysis,
+              analysis_hi: targetLesson.practical_example.analysis_hi,
               tip: targetLesson.practical_example.actionable_tip,
+              tip_hi: targetLesson.practical_example.actionable_tip_hi,
             }
           : undefined,
         keyTakeaways: targetLesson.key_takeaways,
+        keyTakeaways_hi: targetLesson.key_takeaways_hi,
         currentQuizQuestion: activeQuizLesson
           ? getQuestionsByLessonId(activeQuizLesson.id)[0]
           : undefined,
@@ -73,6 +104,11 @@ function MainAppContent() {
     ? {
         subjectId: currentSubject.id,
         subjectName: currentSubject.name,
+        subjectName_hi: currentSubject.name_hi,
+        courseDescription: currentSubject.description,
+        courseDescription_hi: currentSubject.description_hi,
+        courseTopics,
+        courseLessons,
         lessonId: '',
         lessonTitle: currentSubject.name,
         difficulty: 'Beginner',
