@@ -24,11 +24,13 @@ const UI_TRANSLATIONS: Record<string, { en: string; hi: string }> = {
 
   // Home Dashboard
   'home.badge': { en: 'Daily Knowledge Capsule', hi: 'दैनिक ज्ञान कैप्सूल' },
+  'home.todays_mission': { en: "Today's Mission", hi: 'आज का मुख्य पाठ' },
   'home.mission_title': { en: "Today's Core Mission", hi: 'आज का मुख्य पाठ' },
   'home.mission_desc': { en: 'A curated 10-minute micro-lesson to upgrade your understanding.', hi: 'आपके ज्ञान और समझ को मजबूत बनाने के लिए 10 मिनट का सूक्ष्म पाठ।' },
   'home.start_mission': { en: 'Start Today’s Mission', hi: 'आज का पाठ शुरू करें' },
   'home.continue_mission': { en: 'Continue Mission', hi: 'पाठ जारी रखें' },
   'home.completed_mission': { en: 'Mission Completed Today', hi: 'आज का पाठ पूरा हुआ' },
+  'home.quick_revision': { en: 'Spaced Recall Sprint', hi: 'त्वरित पुनरीक्षण' },
   'home.revision_card_title': { en: 'Spaced Recall Sprint', hi: 'दैनिक त्वरित पुनरीक्षण' },
   'home.revision_card_desc': { en: 'Strengthen memory with 5 rapid-fire questions from previous lessons.', hi: 'पिछले पाठों से 5 त्वरित प्रश्नों के साथ अपनी स्मरण शक्ति मजबूत करें।' },
   'home.start_sprint': { en: 'Start 3-Min Sprint', hi: '3-मिनट रिवीजन शुरू करें' },
@@ -117,8 +119,15 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const t = (key: string, fallback?: string): string => {
-    const item = UI_TRANSLATIONS[key];
-    if (!item) return fallback || key;
+    const item = UI_TRANSLATIONS[key] || UI_TRANSLATIONS[key.toLowerCase()];
+    if (!item) {
+      if (fallback) return fallback;
+      if (key.includes('.')) {
+        const lastPart = key.split('.').pop() || key;
+        return lastPart.replace(/_/g, ' ');
+      }
+      return key;
+    }
     return language === 'hi' ? item.hi : item.en;
   };
 

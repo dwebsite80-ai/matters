@@ -94,6 +94,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     return found?.description || fallbackDesc;
   };
 
+  // Safe calculation of lesson number for today's mission
+  const todayMissionNumber =
+    todayMission?.lesson_number ??
+    (todayMission as any)?.lessonNumber ??
+    (() => {
+      if (!todayMission) return 1;
+      const match = todayMission.id?.match(/\d+$/) || todayMission.topic_id?.match(/\d+$/);
+      if (match) return parseInt(match[0], 10);
+      return 1;
+    })();
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fadeIn">
       {/* Header Greeting & Micro-copy */}
@@ -106,7 +117,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             {getGreeting()}, {userName}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 bg-[#FEF2E0] px-3.5 py-1.5 rounded-full border border-[#F5D7A1]">
             <span className="text-sm">🔥</span>
             <span className="text-xs font-bold text-[#8C5E1A]">
@@ -122,14 +133,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
       {/* Large Featured Hero Card: Today's Mission */}
       {todayMission && (
-        <div className="relative bg-[#1A1A1A] rounded-[32px] sm:rounded-[40px] text-white p-7 sm:p-10 overflow-hidden shadow-xl group transition-all">
+        <div className="relative bg-[#1A1A1A] rounded-[28px] sm:rounded-[36px] text-white p-5 sm:p-8 md:p-10 overflow-hidden shadow-xl group transition-all">
           {/* Subtle Orange Glow Ambient Blur */}
           <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-[#FF6321] rounded-full blur-[100px] opacity-25 pointer-events-none group-hover:opacity-35 transition-opacity" />
 
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
               <span className="px-3.5 py-1 rounded-full border border-white/30 text-[10px] uppercase tracking-widest bg-white/10 backdrop-blur-md text-white font-semibold">
-                {t('home.todays_mission')}
+                {t('home.todays_mission', language === 'hi' ? 'आज का मुख्य पाठ' : "Today's Mission")}
               </span>
               <span className="text-xs font-mono text-white/70">
                 {getSubjectEmoji(todayMission.subject_id)} {getSubjectLabel(todayMission.subject_id, todayMission.subject_id)}
@@ -138,7 +149,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
             <div className="max-w-2xl">
               <p className="text-[#D4D4D8] uppercase text-[11px] font-bold tracking-widest mb-1.5">
-                {language === 'hi' ? `पाठ संख्या #${todayMission.lesson_number}` : `Lesson #${todayMission.lesson_number}`}
+                {language === 'hi' ? `पाठ संख्या #${todayMissionNumber}` : `Lesson #${todayMissionNumber}`}
               </p>
               <h2 className="text-2xl sm:text-4xl font-serif italic mb-3 leading-[1.15] text-white">
                 {language === 'hi' && todayMission.title_hi ? todayMission.title_hi : todayMission.title}
@@ -150,8 +161,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-white/10">
-              <div className="flex items-center gap-4 text-xs text-white/70">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-white/10">
+              <div className="flex items-center gap-3 sm:gap-4 text-xs text-white/70 flex-wrap">
                 <span className="flex items-center gap-1.5 font-medium">
                   <Clock className="w-3.5 h-3.5 text-white/60" />
                   {todayMission.estimated_minutes} {language === 'hi' ? 'मिनट' : 'min read'}
@@ -170,7 +181,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <button
                 onClick={() => onStartLesson(todayMission)}
                 id="start-mission-btn"
-                className="bg-white text-[#1A1A1A] px-7 py-3 rounded-full font-bold text-xs hover:bg-[#F5F5F0] hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto"
+                className="w-full sm:w-auto bg-white text-[#1A1A1A] px-6 py-3 rounded-full font-bold text-xs hover:bg-[#F5F5F0] hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{language === 'hi' ? 'आज का पाठ शुरू करें' : "Start Today's Lesson"}</span>
                 <ArrowRight className="w-4 h-4" />

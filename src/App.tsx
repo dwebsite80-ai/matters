@@ -103,7 +103,7 @@ function MainAppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] flex flex-col pb-24 md:pb-12">
+    <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] flex flex-col pb-24 md:pb-12 overflow-x-hidden w-full max-w-full">
       {/* Top Header Navigation */}
       <Navbar
         activeTab={activeTab}
