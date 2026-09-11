@@ -661,7 +661,7 @@ export async function sendTextMessage(
   const isHindi = currentLanguage === 'hi';
   const cleanInput = (userText || '').trim();
 
-  // 1. Try Server-Side API first (Gemini 3.8 Flash + Server-Side Pipeline)
+  // 1. Try Server-Side API first (Universal AI Learning Assistant Pipeline)
   try {
     const response = await fetch('/api/tia/chat', {
       method: 'POST',
@@ -684,51 +684,29 @@ export async function sendTextMessage(
       }
     }
   } catch (apiErr) {
-    // Network or server error - gracefully proceed to client semantic engine
+    console.warn('Tia chat API network issue:', apiErr);
   }
 
-  // 2. Client-Side Semantic Engine Fallback
-  // STEP 1, 2, 3: Classify question internally
-  const classification = classifyUserQuestion(cleanInput, context);
-  const course = classification.course;
-
-  // STEP 4C: If Out-of-Scope, return exact polite syllabus boundary message
-  if (classification.category === 'OUT_OF_SCOPE') {
-    const outText = isHindi
-      ? course.outOfScopeResponse.hi
-      : course.outOfScopeResponse.en;
-    const outSpeech = isHindi
-      ? `यह विषय मेरे वर्तमान कोर्स का हिस्सा नहीं है। मैं अभी आपको ${course.name} से जुड़े सवालों में मदद कर सकती हूँ।`
-      : `That topic is not part of my current course. I can help you with questions related to ${course.name}.`;
-    const quickActions = isHindi
-      ? [`💡 ${course.name} क्या है?`, `🎯 ${course.name} का क्विज़`, `इस कोर्स के मुख्य विषय`]
-      : [`💡 Tell me about ${course.name}`, `🎯 Quiz on ${course.name}`, `Topics in this course`];
-
-    return {
-      id: generateId(),
-      sender: 'tia',
-      text: outText,
-      speechText: outSpeech,
-      mode: 'chat',
-      timestamp: Date.now(),
-      quickActions,
-    };
-  }
-
-  // STEP 4A & 4B: Educational inquiry within Course Scope
-  const knowledge = generateKnowledgeResponse(classification, currentLanguage, context);
-  const displayText = knowledge.displayText || knowledge.text;
-  const speechText =
-    knowledge.speechText || cleanTiaSpeechText(displayText, isHindi);
+  // 2. Failure Fallback: NEVER show the current lesson as the answer for unrelated questions.
+  // Return the friendly, graceful connection retry message requested by user.
+  const courseName = context?.subjectName || (isHindi ? 'वर्तमान कोर्स' : 'current course');
+  const fallbackText = isHindi
+    ? 'Oops, Tia ka connection thoda slow ho gaya 😅. Ek baar phir try karo.'
+    : "Oops, Tia's connection hit a slight bump 😅. Please try asking again!";
+  const fallbackSpeech = isHindi
+    ? 'Oops, Tia ka connection thoda slow ho gaya. Ek baar phir try karo.'
+    : "Oops, Tia's connection hit a slight bump. Please try asking again!";
 
   return {
     id: generateId(),
     sender: 'tia',
-    text: displayText,
-    speechText,
+    text: fallbackText,
+    speechText: fallbackSpeech,
     mode: 'chat',
     timestamp: Date.now(),
-    quickActions: knowledge.quickActions,
+    quickActions: isHindi
+      ? ['फिर से पूछें', `💡 ${courseName} समझाइए`, '🎯 झटपट क्विज़']
+      : ['Ask again', `💡 Explain ${courseName}`, '🎯 Quick quiz'],
   };
 }
 

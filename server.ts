@@ -65,39 +65,10 @@ async function startServer() {
         return res.status(400).json({ error: 'Message cannot be empty' });
       }
 
-      // STEP 1, 2, 3: Classify question internally
-      const classification = classifyUserQuestion(userText, context);
-      const course = classification.course;
       const isHindi = language === 'hi';
+      const course = getCourseScope(context?.subjectId, context);
 
-      // STEP 4C: If Out-of-Scope, return polite syllabus boundary message immediately
-      if (classification.category === 'OUT_OF_SCOPE') {
-        const outDisplay = isHindi
-          ? course.outOfScopeResponse.hi
-          : course.outOfScopeResponse.en;
-        const outSpeech = isHindi
-          ? `यह विषय मेरे वर्तमान कोर्स का हिस्सा नहीं है। मैं अभी आपको ${course.name} से जुड़े सवालों में मदद कर सकती हूँ।`
-          : `That topic is not part of my current course. I can help you with questions related to ${course.name}.`;
-
-        const quickActions = isHindi
-          ? [`💡 ${course.name} क्या है?`, `🎯 ${course.name} का क्विज़`, `इस कोर्स के विषय`]
-          : [`💡 Tell me about ${course.name}`, `🎯 Quiz on ${course.name}`, `Topics in this course`];
-
-        return res.json({
-          ok: true,
-          message: {
-            id: `tia-out-${Date.now()}`,
-            sender: 'tia',
-            text: outDisplay,
-            speechText: outSpeech,
-            timestamp: Date.now(),
-            quickActions,
-          },
-        });
-      }
-
-      // STEP 4A & 4B: Educational inquiry within Course Scope
-      // First attempt: Server-Side Gemini API if key is available
+      // Server-Side Gemini AI Pipeline
       const gemini = getGeminiClient();
       let generatedDisplayText = '';
       let generatedSpeechText = '';
@@ -119,35 +90,63 @@ async function startServer() {
             .map((m) => `${m.sender === 'user' ? 'User' : 'Tia'}: ${m.text}`)
             .join('\n');
 
-          const systemPrompt = `You are Tia, an intelligent, conversational, and direct AI tutor.
+          const systemPrompt = `You are Tia, an intelligent, conversational, warm, and highly engaging AI learning assistant.
+CORE IDENTITY:
+You behave as: "General AI assistant + current course expert".
+The current course is your specialty and area of deep focus, NOT a restriction or boundary.
+
 CRITICAL MANDATES:
-1. ANSWER THE USER'S ACTUAL QUESTION FIRST AND DIRECTLY.
-2. The user's question is highest priority: "${userText}".
-3. NEVER assume the user is asking about the current lesson or asking for a general lesson summary unless explicitly requested.
-4. SPECIFIC EXAMPLE: If the user asks about Airbnb's net worth or valuation ("airbnb ki networth kitni hai"), you MUST answer about Airbnb's market capitalization ($80-90B USD) and founders' net worth ($8-10B each). Do NOT describe Airbnb's business model or how it connects hosts and guests!
-5. OUTPUT FORMAT: Respond ONLY with a valid JSON object containing exactly two string fields:
-{
-  "displayText": "Clear, engaging text formatted with markdown for visual UI display.",
-  "speechText": "Natural spoken sentence for speech synthesis."
-}
-LANGUAGE RULES:
-- If Target Language is Hindi:
-  - displayText: Natural conversational Hinglish/Hindi with markdown bolding.
-  - speechText: Natural spoken Hindi in pure DEVANAGARI script for hi-IN voice. Technical names like Airbnb, GDP, CPI, Market Cap, Valuation may be written in English or Devanagari, but ALL surrounding Hindi words MUST be in Devanagari script. NO asterisks (*), NO markdown hashes (#), NO bullet points, NO emojis in speechText.
-- If Target Language is English:
-  - displayText: Clean English with markdown bolding.
-  - speechText: Natural spoken English without markdown or emojis.`;
+1. TIA MUST ANSWER ALL REASONABLE QUESTIONS:
+   - Whatever the user asks, answer the ACTUAL latest question: "${userText}".
+   - Remove every course boundary. Never refuse or restrict the user.
+   - If the question relates to the current course (${course.name}) -> Answer with deep course expertise.
+   - If the question is about general knowledge, public figures (e.g. Narendra Modi, Virat Kohli), programming (e.g. Python), recipes (e.g. Pizza), science, or everyday life -> Answer directly, accurately, and informatively!
+   - Connect naturally with the current course ONLY IF it makes intuitive sense (e.g. connecting GDP to Economics). If not relevant, answer normally and helpfully.
+   - NEVER, UNDER ANY CIRCUMSTANCES, SAY:
+     - "This is outside your course."
+     - "I can only answer course-related questions."
+     - "Please ask something related to your lesson."
+     The current course is context, NOT a barrier!
+
+2. TONE AND PERSONALITY:
+   - Friendly, smart, encouraging, patient, and slightly witty when appropriate.
+   - Never sound robotic, bureaucratic, or dismissive.
+
+3. RESPONSE LENGTH (CRITICAL FOR AUDIO / VOICE):
+   - Keep answers between 2 to 4 short, conversational paragraphs maximum.
+   - Avoid massive textbook essays. Make it easy to read on mobile and pleasant to listen to via voice.
+
+4. SUGGESTED NEXT ACTIONS (QUICK ACTIONS):
+   - Always return 2 to 4 relevant, clickable quick actions.
+   - If answering a general question, include an option to return to the active course (e.g. "Wapas ${course.name} par chalein").
+
+5. LANGUAGE & VOICE RULES:
+   - Target Language: ${isHindi ? 'Hindi' : 'English'}
+   - If Hindi:
+     - displayText: Friendly, natural Hindi/Hinglish with markdown bolding (**शब्द**) for emphasis.
+     - speechText: Natural spoken Hindi in pure DEVANAGARI script for the Indian TTS engine (hi-IN). English technical names (e.g. Python, GDP, Virat Kohli) can stay, but all conversational Hindi words MUST be in Devanagari script so TTS pronounces them properly. DO NOT put asterisks (*), markdown hashes (#), bullet points, URLs, or emojis in speechText.
+   - If English:
+     - displayText: Fluent, natural English with markdown bolding.
+     - speechText: Natural spoken English for en-IN TTS without markdown symbols or emojis.
+
+6. OUTPUT FORMAT:
+   Return ONLY a valid JSON object with this exact shape:
+   {
+     "displayText": "Your formatted response with markdown for UI display",
+     "speechText": "Spoken text optimized for TTS without markdown symbols or emojis",
+     "quickActions": ["Suggested action 1", "Suggested action 2", "Suggested action 3"]
+   }`;
 
           const userContextPrompt = `CURRENT_COURSE: ${course.name} (${course.description})
-COURSE_SYLLABUS_TOPICS: ${course.syllabusSummary}
-CURRENT_LESSON_TITLE: ${context?.lessonTitle || course.name}
-CURRENT_LESSON_CONTENT: ${lessonSections ? lessonSections.slice(0, 400) : 'N/A'}
-${recentHistory ? `RECENT_CONVERSATION_HISTORY:\n${recentHistory}\n` : ''}
+ACTIVE_LESSON_TITLE: ${context?.lessonTitle || course.name}
+${lessonSections ? `ACTIVE_LESSON_SUMMARY:\n${lessonSections.slice(0, 400)}\n` : ''}
+${recentHistory ? `CONVERSATION_HISTORY:\n${recentHistory}\n` : ''}
 USER_LATEST_QUESTION: "${userText}"
-TARGET_LANGUAGE: ${isHindi ? 'Hindi (speechText in Devanagari)' : 'English'}`;
+TARGET_LANGUAGE: ${isHindi ? 'Hindi (speechText in Devanagari script)' : 'English'}`;
 
           const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-          const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+          // Prioritize gemini-3.1-flash-lite for ultra-fast, high-quota response
+          const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
           let response: any = null;
 
           for (let i = 0; i < modelsToTry.length; i++) {
@@ -159,7 +158,7 @@ TARGET_LANGUAGE: ${isHindi ? 'Hindi (speechText in Devanagari)' : 'English'}`;
                 config: {
                   systemInstruction: systemPrompt,
                   temperature: 0.7,
-                  maxOutputTokens: 700,
+                  maxOutputTokens: 650,
                   responseMimeType: 'application/json',
                 },
               });
@@ -171,10 +170,10 @@ TARGET_LANGUAGE: ${isHindi ? 'Hindi (speechText in Devanagari)' : 'English'}`;
                 err?.message?.includes('high demand') ||
                 err?.message?.includes('UNAVAILABLE');
               console.info(
-                `Model ${modelName} temporarily unavailable${isHighDemand ? ' (high demand spike)' : ''}, checking next fallback...`
+                `Model ${modelName} temporarily busy${isHighDemand ? ' (high demand spike)' : ''}, checking next fallback...`
               );
               if (i < modelsToTry.length - 1) {
-                await sleep(400);
+                await sleep(350);
               }
             }
           }
@@ -183,12 +182,16 @@ TARGET_LANGUAGE: ${isHindi ? 'Hindi (speechText in Devanagari)' : 'English'}`;
             const rawText = response.text.trim();
             let parsedDisplay = '';
             let parsedSpeech = '';
+            let parsedActions: string[] = [];
 
             try {
               const parsed = JSON.parse(rawText);
               if (parsed && typeof parsed === 'object') {
                 parsedDisplay = parsed.displayText || parsed.text || '';
                 parsedSpeech = parsed.speechText || '';
+                if (Array.isArray(parsed.quickActions)) {
+                  parsedActions = parsed.quickActions.filter(Boolean);
+                }
               }
             } catch {
               const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -197,6 +200,9 @@ TARGET_LANGUAGE: ${isHindi ? 'Hindi (speechText in Devanagari)' : 'English'}`;
                   const parsed = JSON.parse(jsonMatch[0]);
                   parsedDisplay = parsed.displayText || parsed.text || '';
                   parsedSpeech = parsed.speechText || '';
+                  if (Array.isArray(parsed.quickActions)) {
+                    parsedActions = parsed.quickActions.filter(Boolean);
+                  }
                 } catch {
                   // ignore
                 }
@@ -208,45 +214,35 @@ TARGET_LANGUAGE: ${isHindi ? 'Hindi (speechText in Devanagari)' : 'English'}`;
               parsedSpeech = cleanTiaSpeechText(rawText, isHindi);
             }
 
-            // Check Response Relevance
-            const relevance = checkResponseRelevance(
-              parsedDisplay,
-              userText,
-              classification.intentType,
-              context?.lessonTitle,
-              course.name
-            );
-
-            if (relevance.isRelevant && parsedDisplay.length > 20) {
-              generatedDisplayText = parsedDisplay;
+            if (parsedDisplay && parsedDisplay.trim().length > 5) {
+              generatedDisplayText = parsedDisplay.trim();
               generatedSpeechText = cleanTiaSpeechText(parsedSpeech || parsedDisplay, isHindi);
-            } else {
-              console.log(
-                'Gemini response failed relevance check:',
-                relevance.reason,
-                '- using curated semantic response'
-              );
+              quickActions = parsedActions;
             }
-          } else {
-            console.info('Gemini models temporarily at capacity; smoothly serving via semantic knowledge engine.');
           }
-        } catch (geminiErr) {
-          console.info('Using semantic knowledge engine for response:', (geminiErr as any)?.message || geminiErr);
+        } catch (geminiErr: any) {
+          console.warn('Gemini error during Tia chat:', geminiErr?.message || geminiErr);
         }
       }
 
-      // If Gemini wasn't available, failed, or failed relevance check, use semantic knowledge response
+      // If AI generation failed, DO NOT show lesson content as answer!
+      // Provide the clean, graceful connection message requested by user.
       if (!generatedDisplayText) {
-        const fallback = generateKnowledgeResponse(classification, language, context);
-        generatedDisplayText = fallback.displayText || fallback.text;
-        generatedSpeechText = fallback.speechText;
-        quickActions = fallback.quickActions;
+        generatedDisplayText = isHindi
+          ? 'Oops, Tia ka connection thoda slow ho gaya 😅. Ek baar phir try karo.'
+          : "Oops, Tia's connection hit a slight bump 😅. Please try asking again!";
+        generatedSpeechText = isHindi
+          ? 'Oops, Tia ka connection thoda slow ho gaya. Ek baar phir try karo.'
+          : "Oops, Tia's connection hit a slight bump. Please try asking again!";
+        quickActions = isHindi
+          ? ['फिर से पूछें', `💡 ${course.name} समझाइए`, '🎯 झटपट क्विज़']
+          : ['Ask again', `💡 Explain ${course.name}`, '🎯 Quick quiz'];
       }
 
       if (quickActions.length === 0) {
         quickActions = isHindi
-          ? ['💡 आसान उदाहरण दो', '😂 मज़ाकिया बनाओ', '🎯 क्विज़ पूछो']
-          : ['💡 Give simple example', '😂 Make it funny', '🎯 Quiz me'];
+          ? ['💡 आसान उदाहरण दो', '😂 मज़ाकिया बनाओ', `📖 वापस ${course.name} पर चलें`]
+          : ['💡 Give simple example', '😂 Make it funny', `📖 Back to ${course.name}`];
       }
 
       return res.json({

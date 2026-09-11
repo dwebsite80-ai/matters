@@ -12,6 +12,7 @@ import {
   Languages,
 } from 'lucide-react';
 import { TiaAvatar } from './TiaAvatar';
+import { TiaMarkdownRenderer } from './TiaMarkdownRenderer';
 import { useTiaVoice } from '../../lib/useTiaVoice';
 import { useLanguage } from '../../context/LanguageContext';
 import {
@@ -71,6 +72,7 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
   }, [messages, tiaState]);
 
   const hasInitializedRef = useRef<boolean>(false);
+  const activeRequestIdRef = useRef<number>(0);
 
   // Initial welcome greeting whenever modal opens (silent text greeting until user interacts)
   useEffect(() => {
@@ -208,17 +210,23 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
 
   // Send user message
   const handleSendUserText = async (textToSend: string, isVoice = false) => {
-    if (!textToSend.trim() || isLoading) return;
+    const question = (textToSend || '').trim();
+    if (!question || isLoading) return;
+
+    // Increment request ID to guard against out-of-order responses overwriting state
+    const currentRequestId = ++activeRequestIdRef.current;
 
     const userMsg: TiaMessage = {
-      id: `user-${Date.now()}`,
+      id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       sender: 'user',
-      text: textToSend,
+      text: question,
       timestamp: Date.now(),
       isVoice,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    // Calculate immediate history so AI request receives the current user message directly
+    const updatedHistory = [...messages, userMsg];
+    setMessages(updatedHistory);
     setInputText('');
     setIsLoading(true);
     setTiaState('thinking');
@@ -228,11 +236,13 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
       const lastMsg = messages[messages.length - 1];
       if (lastMsg?.quizData || activeMode === 'quiz') {
         const evalResult = await tiaService.evaluateQuizAnswer(
-          textToSend,
+          question,
           lastMsg?.quizData?.question || '',
           context,
           currentLanguage
         );
+
+        if (currentRequestId !== activeRequestIdRef.current) return;
 
         const tiaReply: TiaMessage = {
           id: `tia-eval-${Date.now()}`,
@@ -270,10 +280,13 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
       // Check if in speaking practice
       if (activeMode === 'speaking_practice') {
         const speakingEval = await tiaService.evaluateSpeakingAnswer(
-          textToSend,
+          question,
           context,
           currentLanguage
         );
+
+        if (currentRequestId !== activeRequestIdRef.current) return;
+
         setMessages((prev) => [...prev, speakingEval]);
         if (voiceEnabled) {
           speakText(speakingEval.speechText || speakingEval.text);
@@ -285,12 +298,16 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
 
       // Default contextual message routing with currentLanguage and conversation history
       const response = await tiaService.sendTextMessage(
-        textToSend,
+        question,
         context,
         activeMode,
         currentLanguage,
-        messages
+        updatedHistory
       );
+
+      // Race condition check
+      if (currentRequestId !== activeRequestIdRef.current) return;
+
       setMessages((prev) => [...prev, response]);
 
       if (voiceEnabled) {
@@ -300,9 +317,33 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
       }
     } catch (err) {
       console.error('Tia error', err);
-      setTiaState('idle');
+      if (currentRequestId === activeRequestIdRef.current) {
+        const isHi = currentLanguage === 'hi';
+        const fallbackMsg: TiaMessage = {
+          id: `tia-err-${Date.now()}`,
+          sender: 'tia',
+          text: isHi
+            ? 'Oops, Tia ka connection thoda slow ho gaya 😅. Ek baar phir try karo.'
+            : "Oops, Tia's connection hit a slight bump 😅. Please try asking again!",
+          speechText: isHi
+            ? 'Oops, Tia ka connection thoda slow ho gaya. Ek baar phir try karo.'
+            : "Oops, Tia's connection hit a slight bump. Please try asking again!",
+          timestamp: Date.now(),
+          quickActions: isHi
+            ? ['फिर से पूछें', '💡 यह पाठ समझाओ', '🎯 क्विज़ खेलें']
+            : ['Ask again', '💡 Explain lesson', '🎯 Quiz me'],
+        };
+        setMessages((prev) => [...prev, fallbackMsg]);
+        if (voiceEnabled) {
+          speakText(fallbackMsg.speechText || fallbackMsg.text);
+        } else {
+          setTiaState('idle');
+        }
+      }
     } finally {
-      setIsLoading(false);
+      if (currentRequestId === activeRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -528,7 +569,11 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
                 )}
 
                 {/* Body Text */}
-                <div className="whitespace-pre-wrap font-light">{msg.text}</div>
+                {msg.sender === 'tia' ? (
+                  <TiaMarkdownRenderer content={msg.text} />
+                ) : (
+                  <div className="whitespace-pre-wrap font-light">{msg.text}</div>
+                )}
 
                 {/* Quiz options if present */}
                 {msg.quizData?.options && (
@@ -691,7 +736,9 @@ export const TiaAssistantModal: React.FC<TiaAssistantModalProps> = ({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              handleSendUserText(inputText);
+              const val = inputText.trim();
+              if (!val || isLoading) return;
+              handleSendUserText(val);
             }}
             className="flex items-center gap-2"
           >
