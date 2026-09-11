@@ -270,7 +270,15 @@ TARGET_LANGUAGE: ${isHindi ? 'Hindi (speechText in Devanagari script)' : 'Englis
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const candidates = [
+      path.join(process.cwd(), 'dist'),
+      __dirname,
+      path.resolve(__dirname, '..', 'dist'),
+      '/app/applet/dist',
+    ];
+    const distPath =
+      candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html'))) || candidates[0];
+
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       const indexPath = path.join(distPath, 'index.html');
